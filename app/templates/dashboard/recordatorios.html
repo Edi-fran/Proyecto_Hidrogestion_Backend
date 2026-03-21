@@ -1,0 +1,9 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}Recordatorios{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Recordatorios</h2></div>
+{% if session.get('web_role') == 'ADMIN' %}
+<div class="form-card mb-3"><form method="post" class="row g-2"><div class="col-md-3"><select class="form-select" name="usuario_id" required><option value="">Usuario</option>{% for u in usuarios %}<option value="{{ u.id }}">{{ u.nombre_completo }} - {{ u.rol.nombre }}</option>{% endfor %}</select></div><div class="col-md-3"><input class="form-control" name="titulo" placeholder="Título" required></div><div class="col-md-2"><input class="form-control" type="date" name="fecha"></div><div class="col-md-2"><input class="form-control" type="time" name="hora"></div><div class="col-md-2"><button class="btn btn-primary w-100">Guardar</button></div><div class="col-md-2"><input class="form-control" name="tipo" placeholder="Tipo"></div><div class="col-md-10"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripción"></textarea></div></form></div>
+{% endif %}
+<div class="table-card"><table class="table"><thead><tr><th>ID</th><th>Usuario</th><th>Título</th><th>Tipo</th><th>Fecha</th><th>Hora</th><th>Enviado</th><th>Acciones</th></tr></thead><tbody>{% for r in recordatorios %}<tr><td>{{ r.id }}</td><td>{{ r.usuario.nombre_completo if r.usuario else '' }}</td><td>{{ r.titulo }}</td><td>{{ r.tipo }}</td><td>{{ r.fecha }}</td><td>{{ r.hora }}</td><td>{{ 'Sí' if r.enviado else 'No' }}</td><td>{% if session.get('web_role') == 'ADMIN' %}<form method="post" style="display:inline"><input type="hidden" name="recordatorio_id" value="{{ r.id }}"><input type="hidden" name="action" value="delete"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="8">No hay recordatorios registrados.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

@@ -1,0 +1,9 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}Reuniones{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Reuniones y asambleas</h2></div>
+{% if session.get('web_role') == 'ADMIN' %}
+<div class="form-card mb-3"><form method="post" class="row g-2"><div class="col-md-3"><input class="form-control" name="titulo" placeholder="Título" required></div><div class="col-md-3"><input class="form-control" name="lugar" placeholder="Lugar"></div><div class="col-md-2"><input class="form-control" type="date" name="fecha" value="{{ '' }}"></div><div class="col-md-2"><input class="form-control" type="time" name="hora" value="{{ '' }}"></div><div class="col-md-2"><button class="btn btn-primary w-100">Guardar</button></div><div class="col-12"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripción"></textarea></div></form></div>
+{% endif %}
+<div class="table-card"><table class="table"><thead><tr><th>ID</th><th>Título</th><th>Lugar</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{% for r in reuniones %}<tr><td>{{ r.id }}</td><td>{{ r.titulo }}</td><td>{{ r.lugar or '' }}</td><td>{{ r.fecha }}</td><td>{{ r.hora }}</td><td>{{ r.estado }}</td><td>{% if session.get('web_role') == 'ADMIN' %}<form method="post" style="display:inline"><input type="hidden" name="reunion_id" value="{{ r.id }}"><input type="hidden" name="action" value="delete"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="7">No hay reuniones registradas.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

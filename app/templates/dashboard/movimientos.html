@@ -1,0 +1,6 @@
+{% extends "dashboard/base.html" %}
+{% block page_title %}Caja{% endblock %}
+{% block content %}
+<div class="page-header"><h2>Movimientos de caja</h2></div>
+<div class="table-card"><table class="table"><thead><tr><th>ID</th><th>Tipo</th><th>Categoría</th><th>Descripción</th><th>Monto</th><th>Fecha</th><th>Hora</th><th>Registrado por</th></tr></thead><tbody>{% for m in movimientos %}<tr><td>{{ m.id }}</td><td>{{ m.tipo_movimiento }}</td><td>{{ m.categoria }}</td><td>{{ m.descripcion or '' }}</td><td>${{ '%.2f'|format(m.monto or 0) }}</td><td>{{ m.fecha }}</td><td>{{ m.hora }}</td><td>{{ m.usuario.nombre_completo if m.usuario else '' }}</td></tr>{% else %}<tr><td colspan="8">No hay movimientos registrados.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

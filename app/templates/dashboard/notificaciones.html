@@ -1,0 +1,5 @@
+{% extends "dashboard/base.html" %}
+{% block content %}
+<div class="page-header"><h2>Notificaciones del sistema</h2><form method="post" action="{{ url_for('dashboard.sync_alertas_view') }}"><button class="btn btn-primary" type="submit">Sincronizar alertas</button></form></div>
+<div class="table-card"><table class="table"><thead><tr><th>ID</th><th>Usuario</th><th>Título</th><th>Mensaje</th><th>Tipo</th><th>Fecha</th><th>Hora</th><th>Leída</th></tr></thead><tbody>{% for n in notificaciones %}<tr><td>{{ n.id }}</td><td>{{ n.usuario.nombre_completo if n.usuario else '' }}</td><td>{{ n.titulo }}</td><td>{{ n.mensaje }}</td><td>{{ n.tipo }}</td><td>{{ n.fecha }}</td><td>{{ n.hora }}</td><td>{{ 'Sí' if n.leido else 'No' }}</td></tr>{% else %}<tr><td colspan="8">No hay notificaciones registradas.</td></tr>{% endfor %}</tbody></table></div>
+{% endblock %}

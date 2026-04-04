@@ -5,7 +5,7 @@ from flask_jwt_extended import jwt_required, get_jwt_identity, get_jwt
 
 from app.extensions import db
 from app.models import MovimientoCaja, Pago, Planilla, Usuario, TarifaAsignada, Notificacion
-from app.utils import now_date_str, now_time_str, create_notification, create_notification
+from app.utils import now_date_str, now_time_str, create_notification, sync_system_alerts
 
 planillas_bp = Blueprint('planillas', __name__)
 
@@ -55,19 +55,30 @@ def marcar_pagado(planilla_id):
 
 
 @planillas_bp.get('/<int:planilla_id>/descargar')
-@jwt_required()
+@jwt_required(optional=True)
 def descargar_planilla(planilla_id):
+    import os
+    from flask_jwt_extended import decode_token
+    token_param = request.args.get('access_token')
+    if token_param:
+        try:
+            data = decode_token(token_param)
+            usuario_id = int(data['sub'])
+        except Exception:
+            return jsonify({'mensaje': 'Token inválido.'}), 401
+    else:
+        usuario_id = int(get_jwt_identity())
     planilla = Planilla.query.get_or_404(planilla_id)
-    user = Usuario.query.get_or_404(int(get_jwt_identity()))
+    user = Usuario.query.get_or_404(usuario_id)
     if user.rol.nombre == 'SOCIO' and (not user.socio or user.socio.id != planilla.socio_id):
         return jsonify({'mensaje': 'No autorizado.'}), 403
     html = render_template('dashboard/planilla_print.html', planilla=planilla)
-    path = f'instance/planilla_{planilla.id}.html'
+    carpeta = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'instance'))
+    os.makedirs(carpeta, exist_ok=True)
+    path = os.path.join(carpeta, f'planilla_{planilla.id}.html')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(html)
-    return send_file(path, as_attachment=True, download_name=f'{planilla.numero_planilla}.html')
-
-
+    return send_file(path, as_attachment=False, download_name=f'{planilla.numero_planilla}.html')
 
 
 @planillas_bp.put('/<int:planilla_id>/estado')
@@ -145,7 +156,10 @@ def comprobante_pago(planilla_id):
     if planilla.estado != 'PAGADO':
         return jsonify({'mensaje': 'La planilla aún no está pagada.'}), 400
     html = render_template('dashboard/planilla_print.html', planilla=planilla)
-    path = f'instance/comprobante_{planilla.id}.html'
+    import os
+    carpeta = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'instance'))
+    os.makedirs(carpeta, exist_ok=True)
+    path = os.path.join(carpeta, f'comprobante_{planilla.id}.html')
     with open(path, 'w', encoding='utf-8') as f:
         f.write(html)
     return send_file(path, as_attachment=True, download_name=f'comprobante_{planilla.numero_planilla}.html')

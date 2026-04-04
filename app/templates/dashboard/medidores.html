@@ -1,1 +1,227 @@
-{% extends 'dashboard/base.html' %}{% block page_title %}Medidores{% endblock %}{% block content %}<div class="panel-card"><div class="panel-card__header"><h3 class="panel-card__title">CRUD de medidores</h3><a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">Refrescar</a></div><div class="table-responsive"><table class="table table-modern"><thead><tr><th>ID</th><th>Número</th><th>Socio</th><th>Dirección</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{% for m in medidores %}<tr><td>#{{ m.id }}</td><td>{{ m.numero_medidor }}</td><td>{{ m.socio.usuario.nombre_completo if m.socio and m.socio.usuario else '-' }}</td><td>{{ m.vivienda.direccion if m.vivienda else '-' }}</td><td>{{ m.estado }}</td><td><button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editMedidor{{ m.id }}">Editar</button><form method="post" class="d-inline"><input type="hidden" name="action" value="delete"><input type="hidden" name="medidor_id" value="{{ m.id }}"><button class="btn btn-sm btn-outline-danger">Desactivar</button></form></td></tr><div class="modal fade" id="editMedidor{{ m.id }}"><div class="modal-dialog"><div class="modal-content"><form method="post"><div class="modal-header"><h5 class="modal-title">Editar medidor</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" name="action" value="update"><input type="hidden" name="medidor_id" value="{{ m.id }}"><div class="mb-3"><label class="form-label">Número</label><input class="form-control" name="numero_medidor" value="{{ m.numero_medidor }}"></div><div class="mb-3"><label class="form-label">Marca</label><input class="form-control" name="marca" value="{{ m.marca or '' }}"></div><div class="mb-3"><label class="form-label">Modelo</label><input class="form-control" name="modelo" value="{{ m.modelo or '' }}"></div><div class="mb-3"><label class="form-label">Estado</label><input class="form-control" name="estado" value="{{ m.estado }}"></div></div><div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar cambios</button></div></form></div></div></div>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends 'dashboard/base.html' %}
+{% block page_title %}Medidores{% endblock %}
+
+{% block content %}
+
+{% set total = medidores|length %}
+{% set activos = medidores|selectattr('estado','eq','ACTIVO')|list|length %}
+{% set inactivos = medidores|rejectattr('estado','eq','ACTIVO')|list|length %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #1a5fa8;">
+            <div class="metric-card__label">Total medidores</div>
+            <div class="metric-card__value">{{ total }}</div>
+            <div class="metric-card__hint">registrados</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #16a34a;">
+            <div class="metric-card__label">Activos</div>
+            <div class="metric-card__value" style="color:#16a34a;">{{ activos }}</div>
+            <div class="metric-card__hint">en funcionamiento</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #dc2626;">
+            <div class="metric-card__label">Inactivos</div>
+            <div class="metric-card__value" style="color:#dc2626;">{{ inactivos }}</div>
+            <div class="metric-card__hint">desactivados</div>
+        </div>
+    </div>
+</div>
+
+<!-- TABLA -->
+<div class="panel-card">
+    <div class="panel-card__header">
+        <h3 class="panel-card__title">
+            <i class="bi bi-speedometer2 me-2" style="color:#1a5fa8;"></i>
+            Medidores registrados
+        </h3>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">
+            <i class="bi bi-arrow-clockwise"></i> Refrescar
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-modern align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>N° Medidor</th>
+                    <th>Socio</th>
+                    <th>Dirección</th>
+                    <th>Marca / Modelo</th>
+                    <th>Instalación</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in medidores %}
+                <tr style="{% if m.estado != 'ACTIVO' %}opacity:.6;{% endif %}">
+
+                    <td>
+                        <span style="font-weight:700;color:#1a5fa8;">#{{ m.id }}</span>
+                    </td>
+
+                    <td>
+                        <span style="font-family:monospace;font-size:.88rem;font-weight:700;background:#f1f5f9;padding:4px 10px;border-radius:8px;color:#1a5fa8;">
+                            {{ m.numero_medidor }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="
+                                width:32px;height:32px;border-radius:50%;
+                                background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+                                display:grid;place-items:center;
+                                color:white;font-weight:700;font-size:.78rem;
+                                flex-shrink:0;
+                            ">
+                                {{ (m.socio.usuario.nombres[:1] if m.socio and m.socio.usuario and m.socio.usuario.nombres else '?').upper() }}
+                            </div>
+                            <div>
+                                <div style="font-weight:600;font-size:.85rem;color:#0f172a;">
+                                    {{ m.socio.usuario.nombre_completo if m.socio and m.socio.usuario else '-' }}
+                                </div>
+                                <div style="font-size:.72rem;color:#94a3b8;">
+                                    {{ m.socio.usuario.cedula if m.socio and m.socio.usuario else '' }}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td style="max-width:160px;">
+                        <div style="font-size:.82rem;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            <i class="bi bi-geo-alt" style="color:#94a3b8;"></i>
+                            {{ m.vivienda.direccion if m.vivienda else '-' }}
+                        </div>
+                    </td>
+
+                    <td>
+                        {% if m.marca or m.modelo %}
+                        <div style="font-size:.82rem;color:#334155;">
+                            <span style="font-weight:600;">{{ m.marca or '' }}</span>
+                            {% if m.modelo %}
+                            <span style="color:#94a3b8;"> / {{ m.modelo }}</span>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <span style="color:#94a3b8;font-size:.78rem;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <div style="font-size:.82rem;color:#334155;">
+                            {{ m.fecha_instalacion or '—' }}
+                        </div>
+                    </td>
+
+                    <td>
+                        {% if m.estado == 'ACTIVO' %}
+                        <span style="padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:700;background:#d1e7dd;color:#0f5132;border:1px solid #198754;">
+                            ✓ ACTIVO
+                        </span>
+                        {% else %}
+                        <span style="padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:600;background:#fee2e2;color:#dc2626;border:1px solid #dc2626;">
+                            ✗ INACTIVO
+                        </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <div style="display:flex;gap:5px;">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editMedidor{{ m.id }}"
+                                    style="border-radius:8px;font-size:.78rem;padding:4px 10px;">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            {% if m.estado == 'ACTIVO' %}
+                            <form method="post" class="d-inline">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="medidor_id" value="{{ m.id }}">
+                                <button class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('¿Desactivar este medidor?')"
+                                        style="border-radius:8px;font-size:.78rem;padding:4px 10px;">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- MODAL EDITAR -->
+                <div class="modal fade" id="editMedidor{{ m.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content" style="border-radius:16px;border:none;">
+                            <form method="post">
+                                <div class="modal-header" style="background:linear-gradient(135deg,#1a5fa8,#3b82f6);color:white;border-radius:16px 16px 0 0;">
+                                    <h5 class="modal-title">
+                                        <i class="bi bi-speedometer2 me-2"></i>
+                                        Editar medidor {{ m.numero_medidor }}
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+
+                                <div class="modal-body p-4">
+                                    <input type="hidden" name="action" value="update">
+                                    <input type="hidden" name="medidor_id" value="{{ m.id }}">
+
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label">Número de medidor</label>
+                                            <input class="form-control" name="numero_medidor"
+                                                value="{{ m.numero_medidor }}"
+                                                style="font-family:monospace;font-weight:700;">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">Marca</label>
+                                            <input class="form-control" name="marca" value="{{ m.marca or '' }}"
+                                                placeholder="Ej: Sensus">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">Modelo</label>
+                                            <input class="form-control" name="modelo" value="{{ m.modelo or '' }}"
+                                                placeholder="Ej: iPERL">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Estado</label>
+                                            <select class="form-select" name="estado">
+                                                <option {% if m.estado == 'ACTIVO' %}selected{% endif %}>ACTIVO</option>
+                                                <option {% if m.estado == 'INACTIVO' %}selected{% endif %}>INACTIVO</option>
+                                                <option {% if m.estado == 'MANTENIMIENTO' %}selected{% endif %}>MANTENIMIENTO</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="modal-footer" style="border-top:1px solid #e2e8f0;">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="bi bi-check-lg me-1"></i> Guardar cambios
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {% else %}
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <i class="bi bi-speedometer2" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
+                        No hay medidores registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

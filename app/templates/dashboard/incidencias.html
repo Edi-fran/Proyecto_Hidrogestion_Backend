@@ -1,1 +1,297 @@
-{% extends 'dashboard/base.html' %}{% block page_title %}Incidencias{% endblock %}{% block content %}<div class="panel-card"><div class="panel-card__header"><h3 class="panel-card__title">Incidencias y reportes</h3><a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">Refrescar</a></div><div class="table-responsive"><table class="table table-modern"><thead><tr><th>ID</th><th>Tipo</th><th>Usuario</th><th>Estado</th><th>Prioridad</th><th>Coordenadas</th><th>Evidencia</th><th>Acciones</th></tr></thead><tbody>{% for i in incidencias %}<tr><td>#{{ i.id }}</td><td>{{ i.tipo_incidencia }}</td><td>{{ i.usuario.nombre_completo if i.usuario else '-' }}</td><td><span class="badge-soft">{{ i.estado }}</span></td><td>{{ i.prioridad }}</td><td>{{ i.latitud }}, {{ i.longitud }}</td><td>{% if i.evidencias %}<a href="/uploads/{{ i.evidencias[0].ruta_imagen }}" target="_blank"><img class="thumb" src="/uploads/{{ i.evidencias[0].ruta_imagen }}"></a>{% else %}-{% endif %}</td><td><button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editIncidencia{{ i.id }}">Editar</button><form method="post" class="d-inline"><input type="hidden" name="action" value="delete"><input type="hidden" name="incidencia_id" value="{{ i.id }}"><button class="btn btn-sm btn-outline-danger">Cerrar</button></form></td></tr><div class="modal fade" id="editIncidencia{{ i.id }}"><div class="modal-dialog"><div class="modal-content"><form method="post"><div class="modal-header"><h5 class="modal-title">Editar incidencia</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" name="action" value="update"><input type="hidden" name="incidencia_id" value="{{ i.id }}"><div class="mb-3"><label class="form-label">Título</label><input class="form-control" name="titulo" value="{{ i.titulo or '' }}"></div><div class="mb-3"><label class="form-label">Descripción</label><textarea class="form-control" name="descripcion" rows="4">{{ i.descripcion }}</textarea></div><div class="mb-3"><label class="form-label">Prioridad</label><input class="form-control" name="prioridad" value="{{ i.prioridad }}"></div><div class="mb-3"><label class="form-label">Estado</label><input class="form-control" name="estado" value="{{ i.estado }}"></div></div><div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar cambios</button></div></form></div></div></div>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends 'dashboard/base.html' %}
+{% block page_title %}Incidencias{% endblock %}
+
+{% block content %}
+
+{% set total = incidencias|length %}
+{% set abiertas = incidencias|selectattr('estado', 'ne', 'CERRADA')|list|length %}
+{% set cerradas = incidencias|selectattr('estado', 'eq', 'CERRADA')|list|length %}
+{% set criticas = incidencias|selectattr('prioridad', 'eq', 'ALTA')|list|length %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left: 4px solid #1a5fa8;">
+            <div class="metric-card__label">Total reportes</div>
+            <div class="metric-card__value">{{ total }}</div>
+            <div class="metric-card__hint">registrados en el sistema</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left: 4px solid #f59e0b;">
+            <div class="metric-card__label">Abiertas</div>
+            <div class="metric-card__value" style="color:#f59e0b;">{{ abiertas }}</div>
+            <div class="metric-card__hint">requieren atención</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left: 4px solid #16a34a;">
+            <div class="metric-card__label">Cerradas</div>
+            <div class="metric-card__value" style="color:#16a34a;">{{ cerradas }}</div>
+            <div class="metric-card__hint">resueltas</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left: 4px solid #dc2626;">
+            <div class="metric-card__label">Alta prioridad</div>
+            <div class="metric-card__value" style="color:#dc2626;">{{ criticas }}</div>
+            <div class="metric-card__hint">atención urgente</div>
+        </div>
+    </div>
+</div>
+
+<!-- TABLA -->
+<div class="panel-card">
+    <div class="panel-card__header">
+        <h3 class="panel-card__title">
+            <i class="bi bi-tools me-2" style="color:#1a5fa8;"></i>
+            Incidencias y reportes
+        </h3>
+        <div class="d-flex gap-2">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">
+                <i class="bi bi-arrow-clockwise"></i> Refrescar
+            </a>
+        </div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-modern align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Usuario</th>
+                    <th>Estado</th>
+                    <th>Prioridad</th>
+                    <th>Coordenadas</th>
+                    <th>Evidencia</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for i in incidencias %}
+                <tr>
+                    <td>
+                        <span style="font-weight:700; color:#1a5fa8;">#{{ i.id }}</span>
+                    </td>
+
+                    <td>
+                        <span style="
+                            display:inline-block;
+                            padding:3px 10px;
+                            border-radius:8px;
+                            font-size:.78rem;
+                            font-weight:600;
+                            background:#f1f5f9;
+                            color:#334155;
+                        ">{{ i.tipo_incidencia }}</span>
+                    </td>
+
+                    <td style="max-width:200px;">
+                        <div style="font-weight:600; font-size:.88rem;">{{ i.titulo or 'Sin título' }}</div>
+                        <div style="font-size:.78rem; color:#64748b; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:180px;">
+                            {{ i.descripcion[:60] ~ '...' if i.descripcion and i.descripcion|length > 60 else (i.descripcion or '-') }}
+                        </div>
+                    </td>
+
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="
+                                width:32px; height:32px; border-radius:50%;
+                                background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+                                display:grid; place-items:center;
+                                color:white; font-weight:700; font-size:.8rem;
+                                flex-shrink:0;
+                            ">
+                                {{ (i.usuario.nombres[:1] if i.usuario and i.usuario.nombres else '?').upper() }}
+                            </div>
+                            <div>
+                                <div style="font-weight:600; font-size:.85rem;">
+                                    {{ i.usuario.nombre_completo if i.usuario else '-' }}
+                                </div>
+                                <div style="font-size:.75rem; color:#94a3b8;">
+                                    {{ i.fecha_reporte or '' }}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        {% if i.estado == 'REPORTADA' %}
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:#fff3cd;color:#856404;font-size:.78rem;font-weight:700;border:1px solid #ffc107;">
+                                <i class="bi bi-exclamation-circle"></i> REPORTADA
+                            </span>
+                        {% elif i.estado == 'CERRADA' %}
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:#d1e7dd;color:#0f5132;font-size:.78rem;font-weight:700;border:1px solid #198754;">
+                                <i class="bi bi-check-circle"></i> CERRADA
+                            </span>
+                        {% elif i.estado == 'EN_PROCESO' %}
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:#cfe2ff;color:#084298;font-size:.78rem;font-weight:700;border:1px solid #0d6efd;">
+                                <i class="bi bi-gear"></i> EN PROCESO
+                            </span>
+                        {% else %}
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:#f1f5f9;color:#475569;font-size:.78rem;font-weight:700;">
+                                {{ i.estado }}
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if i.prioridad == 'ALTA' %}
+                            <span style="color:#dc2626;font-weight:700;font-size:.82rem;">
+                                <i class="bi bi-arrow-up-circle-fill"></i> ALTA
+                            </span>
+                        {% elif i.prioridad == 'MEDIA' %}
+                            <span style="color:#f59e0b;font-weight:700;font-size:.82rem;">
+                                <i class="bi bi-dash-circle-fill"></i> MEDIA
+                            </span>
+                        {% else %}
+                            <span style="color:#16a34a;font-weight:700;font-size:.82rem;">
+                                <i class="bi bi-arrow-down-circle-fill"></i> BAJA
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if i.latitud and i.longitud %}
+                            <a href="https://maps.google.com/?q={{ i.latitud }},{{ i.longitud }}"
+                               target="_blank"
+                               style="font-size:.78rem; color:#1a5fa8; text-decoration:none;">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                {{ '%.4f'|format(i.latitud) }},<br>
+                                {{ '%.4f'|format(i.longitud) }}
+                            </a>
+                        {% else %}
+                            <span style="color:#94a3b8; font-size:.78rem;">Sin GPS</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if i.evidencias %}
+                            <a href="/uploads/{{ i.evidencias[0].ruta_imagen }}" target="_blank">
+                                <img src="/uploads/{{ i.evidencias[0].ruta_imagen }}"
+                                     style="width:56px;height:56px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;transition:transform .2s;"
+                                     onmouseover="this.style.transform='scale(1.1)'"
+                                     onmouseout="this.style.transform='scale(1)'">
+                            </a>
+                            {% if i.evidencias|length > 1 %}
+                                <div style="font-size:.72rem;color:#64748b;margin-top:2px;text-align:center;">
+                                    +{{ i.evidencias|length - 1 }} más
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <span style="color:#cbd5e1;font-size:.78rem;">
+                                <i class="bi bi-image"></i> Sin foto
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <div class="d-flex gap-1 flex-wrap">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editIncidencia{{ i.id }}"
+                                    style="border-radius:8px; font-size:.78rem; padding:4px 10px;">
+                                <i class="bi bi-pencil"></i> Editar
+                            </button>
+
+                            {% if i.estado != 'CERRADA' %}
+                            <form method="post" class="d-inline">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="incidencia_id" value="{{ i.id }}">
+                                <button class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('¿Cerrar esta incidencia?')"
+                                        style="border-radius:8px; font-size:.78rem; padding:4px 10px;">
+                                    <i class="bi bi-x-circle"></i> Cerrar
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+
+                <!-- MODAL EDITAR -->
+                <div class="modal fade" id="editIncidencia{{ i.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content" style="border-radius:16px; border:none;">
+                            <form method="post">
+                                <div class="modal-header" style="background:linear-gradient(135deg,#1a5fa8,#3b82f6);color:white;border-radius:16px 16px 0 0;">
+                                    <h5 class="modal-title">
+                                        <i class="bi bi-pencil-square me-2"></i>
+                                        Editar incidencia #{{ i.id }}
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+
+                                <div class="modal-body p-4">
+                                    <input type="hidden" name="action" value="update">
+                                    <input type="hidden" name="incidencia_id" value="{{ i.id }}">
+
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label">Título</label>
+                                            <input class="form-control" name="titulo" value="{{ i.titulo or '' }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Descripción</label>
+                                            <textarea class="form-control" name="descripcion" rows="4">{{ i.descripcion }}</textarea>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Prioridad</label>
+                                            <select class="form-select" name="prioridad">
+                                                <option {% if i.prioridad == 'BAJA' %}selected{% endif %}>BAJA</option>
+                                                <option {% if i.prioridad == 'MEDIA' %}selected{% endif %}>MEDIA</option>
+                                                <option {% if i.prioridad == 'ALTA' %}selected{% endif %}>ALTA</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label class="form-label">Estado</label>
+                                            <select class="form-select" name="estado">
+                                                <option {% if i.estado == 'REPORTADA' %}selected{% endif %}>REPORTADA</option>
+                                                <option {% if i.estado == 'EN_PROCESO' %}selected{% endif %}>EN_PROCESO</option>
+                                                <option {% if i.estado == 'CERRADA' %}selected{% endif %}>CERRADA</option>
+                                            </select>
+                                        </div>
+
+                                        {% if i.evidencias %}
+                                        <div class="col-12">
+                                            <label class="form-label">Evidencias</label>
+                                            <div class="d-flex gap-2 flex-wrap">
+                                                {% for ev in i.evidencias %}
+                                                <a href="/uploads/{{ ev.ruta_imagen }}" target="_blank">
+                                                    <img src="/uploads/{{ ev.ruta_imagen }}"
+                                                         style="width:80px;height:80px;object-fit:cover;border-radius:10px;border:2px solid #e2e8f0;">
+                                                </a>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                                <div class="modal-footer" style="border-top:1px solid #e2e8f0;">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="bi bi-check-lg me-1"></i> Guardar cambios
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                {% else %}
+                <tr>
+                    <td colspan="9" class="empty-state">
+                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
+                        No hay incidencias registradas.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

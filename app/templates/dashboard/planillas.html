@@ -1,1 +1,188 @@
-{% extends 'dashboard/base.html' %}{% block page_title %}Planillas y cobros{% endblock %}{% block content %}<div class="panel-card"><div class="panel-card__header"><h3 class="panel-card__title">Planillas generadas</h3><a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">Refrescar</a></div><div class="table-responsive"><table class="table table-modern"><thead><tr><th>Planilla</th><th>Socio</th><th>Consumo</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{% for p in planillas %}<tr><td>{{ p.numero_planilla }}</td><td>{{ p.socio.usuario.nombre_completo if p.socio and p.socio.usuario else '-' }}</td><td>{{ p.consumo_m3 }} m³</td><td>${{ '%.2f'|format(p.total_pagar) }}</td><td><span class="badge-soft">{{ p.estado }}</span></td><td class="no-print"><a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.imprimir_planilla', planilla_id=p.id) }}" target="_blank">Imprimir</a>{% if p.estado != 'PAGADO' %}<button class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#pago{{ p.id }}">Marcar pagada</button>{% else %}<span class="badge text-bg-success">Pagada</span>{% endif %}<div class="modal fade" id="pago{{ p.id }}"><div class="modal-dialog"><div class="modal-content"><form method="post"><div class="modal-header"><h5 class="modal-title">Registrar pago</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" name="planilla_id" value="{{ p.id }}"><div class="mb-3"><label class="form-label">Valor pagado</label><input class="form-control" name="valor_pagado" value="{{ p.total_pagar }}"></div><div class="mb-3"><label class="form-label">Método de pago</label><select class="form-select" name="metodo_pago"><option>EFECTIVO</option><option>TRANSFERENCIA</option><option>OTRO</option></select></div><div class="mb-3"><label class="form-label">Referencia</label><input class="form-control" name="referencia_pago"></div></div><div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar pago</button></div></form></div></div></div></td></tr>{% else %}<tr><td colspan="6" class="empty-state">No hay planillas registradas.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends 'dashboard/base.html' %}
+{% block page_title %}Planillas y cobros{% endblock %}
+
+{% block content %}
+<style>
+  .panel-card { min-height: unset !important; }
+  .content-area { padding-top: 0 !important; }
+  .panel-card__header { padding-bottom: 8px !important; }
+</style>
+
+<div class="panel-card mb-2" style="padding: 10px 16px;">
+    <div class="panel-card__header">
+        <h3 class="panel-card__title">Búsqueda de planillas</h3>
+    </div>
+
+    <form method="get" class="row g-3">
+        <div class="col-md-4">
+            <label class="form-label">Buscar por medidor</label>
+            <input
+                type="text"
+                name="medidor"
+                class="form-control"
+                placeholder="Número de medidor"
+                value="{{ filtro_medidor or '' }}"
+            >
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Buscar por socio</label>
+            <input
+                type="text"
+                name="socio"
+                class="form-control"
+                placeholder="Nombre del socio"
+                value="{{ filtro_socio or '' }}"
+            >
+        </div>
+
+        <div class="col-md-4">
+            <label class="form-label">Buscar por fecha</label>
+            <input
+                type="date"
+                name="fecha"
+                class="form-control"
+                value="{{ filtro_fecha or '' }}"
+            >
+        </div>
+
+        <div class="col-12 d-flex gap-2">
+            <button type="submit" class="btn btn-primary">Buscar</button>
+            <a class="btn btn-outline-secondary" href="{{ url_for('dashboard.planillas_view') }}">Limpiar</a>
+            <a class="btn btn-sm btn-outline-primary ms-auto" href="{{ url_for('dashboard.refresh_page') }}">Refrescar</a>
+        </div>
+    </form>
+</div>
+
+<div class="panel-card">
+    <div class="panel-card__header">
+        <h3 class="panel-card__title">Planillas generadas</h3>
+<form method="post" action="{{ url_for('dashboard.generar_planillas') }}">
+    <button type="submit" class="btn btn-success btn-sm"
+        onclick="return confirm('¿Generar planillas para todas las lecturas?')">
+        ⚡ Generar planillas
+    </button>
+</form>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-modern">
+            <thead>
+                <tr>
+                    <th>Planilla</th>
+                    <th>Socio</th>
+                    <th>Medidor</th>
+                    <th>Fecha</th>
+                    <th>Consumo</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in planillas %}
+                <tr>
+                    <td>{{ p.numero_planilla }}</td>
+
+                    <td>
+                        {{ p.socio.usuario.nombre_completo if p.socio and p.socio.usuario else '-' }}
+                    </td>
+
+                    <td>
+                        {% if p.lectura and p.lectura.medidor %}
+                            {{ p.lectura.medidor.numero_medidor }}
+                        {% elif p.vivienda and p.vivienda.medidor %}
+                            {{ p.vivienda.medidor.numero_medidor }}
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+
+                    <td>{{ p.fecha_emision or '-' }}</td>
+
+                    <td>{{ p.consumo_m3 }} m³</td>
+
+                    <td>${{ '%.2f'|format(p.total_pagar or 0) }}</td>
+
+                    <td>
+                        <span class="badge-soft">{{ p.estado }}</span>
+                    </td>
+
+                    <td class="no-print">
+                        <div class="d-flex flex-wrap gap-2">
+                            <a class="btn btn-sm btn-outline-primary"
+                               href="{{ url_for('dashboard.imprimir_planilla', planilla_id=p.id) }}"
+                               target="_blank">
+                                Imprimir
+                            </a>
+
+                            {% if p.pdf_ruta %}
+                            <a class="btn btn-sm btn-outline-dark"
+                               href="{{ url_for('dashboard.imprimir_planilla', planilla_id=p.id) }}">
+                                    Descargar PDF
+                            </a>
+                            {% endif %}
+
+                            {% if p.estado != 'PAGADO' %}
+                            <button class="btn btn-sm btn-success"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#pago{{ p.id }}">
+                                Marcar pagada
+                            </button>
+                            {% else %}
+                            <span class="badge text-bg-success">Pagada</span>
+                            {% endif %}
+                        </div>
+
+                        <div class="modal fade" id="pago{{ p.id }}">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <form method="post">
+                                        <div class="modal-header">
+                                            <h5 class="modal-title">Registrar pago</h5>
+                                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                        </div>
+
+                                        <div class="modal-body">
+                                            <input type="hidden" name="planilla_id" value="{{ p.id }}">
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Valor pagado</label>
+                                                <input class="form-control" name="valor_pagado" value="{{ p.total_pagar }}">
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Método de pago</label>
+                                                <select class="form-select" name="metodo_pago">
+                                                    <option>EFECTIVO</option>
+                                                    <option>TRANSFERENCIA</option>
+                                                    <option>OTRO</option>
+                                                </select>
+                                            </div>
+
+                                            <div class="mb-3">
+                                                <label class="form-label">Referencia</label>
+                                                <input class="form-control" name="referencia_pago">
+                                            </div>
+                                        </div>
+
+                                        <div class="modal-footer">
+                                            <button class="btn btn-primary" type="submit">Guardar pago</button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="empty-state">No hay planillas registradas.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

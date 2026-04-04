@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Planilla PLA-0001-202604-0009</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #111;
+            background: #fff;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 10mm 12mm;
+        }
+
+        /* ── ENCABEZADO ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #1a5fa8;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-box {
+            width: 55px;
+            height: 55px;
+            background: #1a5fa8;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .org-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a5fa8;
+            line-height: 1.2;
+        }
+
+        .org-subtitle {
+            font-size: 10px;
+            color: #555;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .planilla-num {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1a5fa8;
+        }
+
+        .badge-estado {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .badge-PENDIENTE { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+        .badge-PAGADO    { background: #d1e7dd; color: #0f5132; border: 1px solid #198754; }
+        .badge-VENCIDO   { background: #f8d7da; color: #842029; border: 1px solid #dc3545; }
+
+        /* ── SECCIONES ── */
+        .section {
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            background: #1a5fa8;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            padding: 3px 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        /* ── GRID DE DATOS ── */
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 16px;
+            padding: 4px 6px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+
+        .data-grid-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .data-item label {
+            font-size: 9px;
+            color: #666;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        .data-item span {
+            font-size: 11px;
+            font-weight: bold;
+            color: #111;
+        }
+
+        /* ── TABLA CONSUMO ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        table thead tr {
+            background: #e8f0fb;
+        }
+
+        table th {
+            padding: 5px 8px;
+            text-align: left;
+            font-size: 10px;
+            color: #333;
+            border: 1px solid #dee2e6;
+        }
+
+        table td {
+            padding: 5px 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        table td.right, table th.right {
+            text-align: right;
+        }
+
+        table tr.subtotal td {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+
+        table tr.total td {
+            background: #1a5fa8;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        /* ── HISTORIAL BARRAS ── */
+        .bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            height: 50px;
+            padding: 0 6px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+
+        .bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .bar-fill {
+            width: 100%;
+            background: #1a5fa8;
+            border-radius: 3px 3px 0 0;
+            min-height: 4px;
+        }
+
+        .bar-label {
+            font-size: 8px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* ── PAGO INFO ── */
+        .pago-box {
+            border: 2px solid #1a5fa8;
+            border-radius: 6px;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f0f6ff;
+        }
+
+        .pago-label {
+            font-size: 11px;
+            color: #555;
+        }
+
+        .pago-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1a5fa8;
+        }
+
+        .pago-dates {
+            text-align: right;
+            font-size: 10px;
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            margin-top: 10px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 6px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #888;
+        }
+
+        .print-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background: #1a5fa8;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            z-index: 999;
+        }
+
+        @media print {
+            .print-btn { display: none; }
+            .page { padding: 8mm 10mm; }
+            body { font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨️ Imprimir</button>
+
+<div class="page">
+
+    <!-- ENCABEZADO -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-box">HG</div>
+            <div>
+                <div class="org-name">HidroGestión</div>
+                <div class="org-subtitle">Sistema Comunitario de Agua Potable</div>
+                <div class="org-subtitle">Tel: — &nbsp;|&nbsp; hidrogestion@sistema.ec</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="planilla-num">PLA-0001-202604-0009</div>
+            <div>Período: 4/2026</div>
+            <div class="badge-estado badge-PENDIENTE">PENDIENTE</div>
+        </div>
+    </div>
+
+    <!-- DATOS DEL SOCIO -->
+    <div class="section">
+        <div class="section-title">Datos del Socio</div>
+        <div class="data-grid data-grid-3">
+            <div class="data-item">
+                <label>Nombre completo</label>
+                <span>Socio Demo</span>
+            </div>
+            <div class="data-item">
+                <label>Cédula</label>
+                <span>1100000002</span>
+            </div>
+            <div class="data-item">
+                <label>Código de socio</label>
+                <span>SOC-001</span>
+            </div>
+            <div class="data-item">
+                <label>Número de medidor</label>
+                <span>
+                    
+                        MED-001
+                    
+                </span>
+            </div>
+            <div class="data-item">
+                <label>Dirección</label>
+                <span>Barrio Central, casa azul</span>
+            </div>
+            <div class="data-item">
+                <label>Teléfono</label>
+                <span>0999999999</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DATOS DE LECTURA -->
+    <div class="section">
+        <div class="section-title">Lectura del Período</div>
+        <div class="data-grid data-grid-3">
+            <div class="data-item">
+                <label>Lectura anterior (m³)</label>
+                <span>148.00</span>
+            </div>
+            <div class="data-item">
+                <label>Lectura actual (m³)</label>
+                <span>160.30</span>
+            </div>
+            <div class="data-item">
+                <label>Consumo del período (m³)</label>
+                <span style="color:#1a5fa8; font-size:14px;">12.30 m³</span>
+            </div>
+            <div class="data-item">
+                <label>Fecha de lectura</label>
+                <span>2026-05-31</span>
+            </div>
+            <div class="data-item">
+                <label>Fecha de emisión</label>
+                <span>2026-04-01</span>
+            </div>
+            <div class="data-item">
+                <label>Fecha de vencimiento</label>
+                <span>Por definir</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DETALLE DE VALORES -->
+    <div class="section">
+        <div class="section-title">Detalle de Valores a Pagar</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th class="right">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Cargo fijo mensual</td>
+                    <td class="right">$5.00</td>
+                </tr>
+                <tr>
+                    <td>Consumo 12.30 m³ × $0.45/m³</td>
+                    <td class="right">$6.04</td>
+                </tr>
+                
+                
+                
+                <tr class="total">
+                    <td>TOTAL A PAGAR</td>
+                    <td class="right">$6.04</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- CAJA DE PAGO -->
+    <div class="section">
+        <div class="pago-box">
+            <div>
+                <div class="pago-label">💧 Valor total a cancelar</div>
+                <div class="pago-amount">$6.04</div>
+                <div style="font-size:9px; color:#888; margin-top:4px;">
+                    Período 4/2026
+                </div>
+            </div>
+            <div class="pago-dates">
+                
+                    <div style="color:#856404; font-weight:bold;">⚠ PENDIENTE DE PAGO</div>
+                    <div>Vence: Por definir</div>
+                    <div style="color:#666; font-size:9px; margin-top:4px;">
+                        Acérquese a la oficina de la junta<br>para realizar su pago.
+                    </div>
+                
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div>HidroGestión — Sistema Comunitario de Agua Potable</div>
+        <div>Planilla: PLA-0001-202604-0009 &nbsp;|&nbsp; Generado: 2026-04-01</div>
+    </div>
+
+</div>
+</body>
+</html>

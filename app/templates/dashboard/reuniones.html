@@ -1,9 +1,266 @@
-{% extends "dashboard/base.html" %}
+{% extends 'dashboard/base.html' %}
 {% block page_title %}Reuniones{% endblock %}
+
 {% block content %}
-<div class="page-header"><h2>Reuniones y asambleas</h2></div>
-{% if session.get('web_role') == 'ADMIN' %}
-<div class="form-card mb-3"><form method="post" class="row g-2"><div class="col-md-3"><input class="form-control" name="titulo" placeholder="Título" required></div><div class="col-md-3"><input class="form-control" name="lugar" placeholder="Lugar"></div><div class="col-md-2"><input class="form-control" type="date" name="fecha" value="{{ '' }}"></div><div class="col-md-2"><input class="form-control" type="time" name="hora" value="{{ '' }}"></div><div class="col-md-2"><button class="btn btn-primary w-100">Guardar</button></div><div class="col-12"><textarea class="form-control" name="descripcion" rows="2" placeholder="Descripción"></textarea></div></form></div>
-{% endif %}
-<div class="table-card"><table class="table"><thead><tr><th>ID</th><th>Título</th><th>Lugar</th><th>Fecha</th><th>Hora</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{% for r in reuniones %}<tr><td>{{ r.id }}</td><td>{{ r.titulo }}</td><td>{{ r.lugar or '' }}</td><td>{{ r.fecha }}</td><td>{{ r.hora }}</td><td>{{ r.estado }}</td><td>{% if session.get('web_role') == 'ADMIN' %}<form method="post" style="display:inline"><input type="hidden" name="reunion_id" value="{{ r.id }}"><input type="hidden" name="action" value="delete"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form>{% endif %}</td></tr>{% else %}<tr><td colspan="7">No hay reuniones registradas.</td></tr>{% endfor %}</tbody></table></div>
+
+{% set total = reuniones|length %}
+{% set programadas = reuniones|selectattr('estado','eq','PROGRAMADA')|list|length %}
+{% set realizadas = reuniones|selectattr('estado','eq','REALIZADA')|list|length %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #1a5fa8;">
+            <div class="metric-card__label">Total reuniones</div>
+            <div class="metric-card__value">{{ total }}</div>
+            <div class="metric-card__hint">registradas</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #f59e0b;">
+            <div class="metric-card__label">Programadas</div>
+            <div class="metric-card__value" style="color:#f59e0b;">{{ programadas }}</div>
+            <div class="metric-card__hint">próximas</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #16a34a;">
+            <div class="metric-card__label">Realizadas</div>
+            <div class="metric-card__value" style="color:#16a34a;">{{ realizadas }}</div>
+            <div class="metric-card__hint">completadas</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+
+    <!-- FORMULARIO -->
+    {% if session.get('web_role') == 'ADMIN' %}
+    <div class="col-lg-4">
+        <div class="panel-card">
+            <div class="panel-card__header">
+                <h3 class="panel-card__title">
+                    <i class="bi bi-calendar-plus me-2" style="color:#1a5fa8;"></i>
+                    Nueva reunión
+                </h3>
+            </div>
+
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Título <span style="color:red">*</span></label>
+                    <input class="form-control" name="titulo"
+                        placeholder="Ej: Asamblea ordinaria marzo" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Lugar</label>
+                    <input class="form-control" name="lugar"
+                        placeholder="Ej: Casa comunal del barrio">
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Fecha</label>
+                        <input class="form-control" type="date" name="fecha">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Hora</label>
+                        <input class="form-control" type="time" name="hora">
+                    </div>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Estado</label>
+                    <select class="form-select" name="estado">
+                        <option value="PROGRAMADA">PROGRAMADA</option>
+                        <option value="REALIZADA">REALIZADA</option>
+                        <option value="CANCELADA">CANCELADA</option>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" name="descripcion" rows="3"
+                        placeholder="Agenda o descripción de la reunión..."></textarea>
+                </div>
+
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-calendar-check me-1"></i> Guardar reunión
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- LISTA -->
+    <div class="col-lg-{% if session.get('web_role') == 'ADMIN' %}8{% else %}12{% endif %}">
+        <div class="panel-card">
+            <div class="panel-card__header">
+                <h3 class="panel-card__title">
+                    <i class="bi bi-calendar-event me-2" style="color:#1a5fa8;"></i>
+                    Reuniones y asambleas
+                </h3>
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">
+                    <i class="bi bi-arrow-clockwise"></i> Refrescar
+                </a>
+            </div>
+
+            {% if reuniones %}
+            <div class="list-stack">
+                {% for r in reuniones %}
+                <div style="
+                    border:1px solid #e2e8f0;
+                    border-radius:14px;
+                    padding:14px 16px;
+                    border-left:4px solid
+                    {% if r.estado == 'REALIZADA' %}#16a34a
+                    {% elif r.estado == 'CANCELADA' %}#dc2626
+                    {% else %}#f59e0b{% endif %};
+                    transition:box-shadow .2s;
+                " onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'"
+                   onmouseout="this.style.boxShadow='none'">
+
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                        <div style="flex:1;">
+                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:6px;">
+                                <span style="font-weight:700; font-size:.95rem; color:#0f172a;">{{ r.titulo }}</span>
+
+                                {% if r.estado == 'PROGRAMADA' %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:#fff3cd;color:#856404;border:1px solid #ffc107;">
+                                    <i class="bi bi-clock"></i> PROGRAMADA
+                                </span>
+                                {% elif r.estado == 'REALIZADA' %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:#d1e7dd;color:#0f5132;border:1px solid #198754;">
+                                    <i class="bi bi-check-circle"></i> REALIZADA
+                                </span>
+                                {% elif r.estado == 'CANCELADA' %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:#fee2e2;color:#dc2626;border:1px solid #dc2626;">
+                                    <i class="bi bi-x-circle"></i> CANCELADA
+                                </span>
+                                {% else %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:600;background:#f1f5f9;color:#64748b;">
+                                    {{ r.estado }}
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            {% if r.descripcion %}
+                            <div style="font-size:.82rem; color:#64748b; margin-bottom:6px;">
+                                {{ r.descripcion[:120] ~ '...' if r.descripcion|length > 120 else r.descripcion }}
+                            </div>
+                            {% endif %}
+
+                            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                                {% if r.lugar %}
+                                <div style="font-size:.78rem; color:#64748b;">
+                                    <i class="bi bi-geo-alt" style="color:#1a5fa8;"></i>
+                                    {{ r.lugar }}
+                                </div>
+                                {% endif %}
+                                <div style="font-size:.78rem; color:#64748b;">
+                                    <i class="bi bi-calendar3" style="color:#1a5fa8;"></i>
+                                    {{ r.fecha or '-' }}
+                                    {% if r.hora %}
+                                    · <i class="bi bi-clock"></i> {{ r.hora }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ACCIONES -->
+                        {% if session.get('web_role') == 'ADMIN' %}
+                        <div style="display:flex; gap:6px; flex-shrink:0;">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editReunion{{ r.id }}"
+                                    style="border-radius:8px; font-size:.78rem; padding:4px 10px;">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form method="post" class="d-inline">
+                                <input type="hidden" name="reunion_id" value="{{ r.id }}">
+                                <input type="hidden" name="action" value="delete">
+                                <button class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('¿Eliminar esta reunión?')"
+                                        style="border-radius:8px; font-size:.78rem; padding:4px 10px;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- MODAL EDITAR -->
+                {% if session.get('web_role') == 'ADMIN' %}
+                <div class="modal fade" id="editReunion{{ r.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content" style="border-radius:16px; border:none;">
+                            <form method="post">
+                                <div class="modal-header" style="background:linear-gradient(135deg,#1a5fa8,#3b82f6);color:white;border-radius:16px 16px 0 0;">
+                                    <h5 class="modal-title">
+                                        <i class="bi bi-pencil-square me-2"></i>
+                                        Editar reunión
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body p-4">
+                                    <input type="hidden" name="reunion_id" value="{{ r.id }}">
+                                    <input type="hidden" name="action" value="update">
+
+                                    <div class="mb-3">
+                                        <label class="form-label">Título</label>
+                                        <input class="form-control" name="titulo" value="{{ r.titulo }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Lugar</label>
+                                        <input class="form-control" name="lugar" value="{{ r.lugar or '' }}">
+                                    </div>
+                                    <div class="row g-2 mb-3">
+                                        <div class="col-6">
+                                            <label class="form-label">Fecha</label>
+                                            <input class="form-control" type="date" name="fecha" value="{{ r.fecha or '' }}">
+                                        </div>
+                                        <div class="col-6">
+                                            <label class="form-label">Hora</label>
+                                            <input class="form-control" type="time" name="hora" value="{{ r.hora or '' }}">
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Estado</label>
+                                        <select class="form-select" name="estado">
+                                            <option {% if r.estado == 'PROGRAMADA' %}selected{% endif %}>PROGRAMADA</option>
+                                            <option {% if r.estado == 'REALIZADA' %}selected{% endif %}>REALIZADA</option>
+                                            <option {% if r.estado == 'CANCELADA' %}selected{% endif %}>CANCELADA</option>
+                                        </select>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Descripción</label>
+                                        <textarea class="form-control" name="descripcion" rows="3">{{ r.descripcion or '' }}</textarea>
+                                    </div>
+                                </div>
+                                <div class="modal-footer" style="border-top:1px solid #e2e8f0;">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="bi bi-check-lg me-1"></i> Guardar cambios
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endif %}
+
+                {% endfor %}
+            </div>
+
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-calendar-x" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
+                No hay reuniones registradas.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
 {% endblock %}

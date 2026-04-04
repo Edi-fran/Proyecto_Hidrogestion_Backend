@@ -1,1 +1,275 @@
-{% extends 'dashboard/base.html' %}{% block page_title %}Avisos oficiales{% endblock %}{% block content %}<div class="row g-4"><div class="col-lg-5"><div class="panel-card"><h3 class="panel-card__title mb-3">Crear aviso</h3><form method="post"><div class="row g-3"><div class="col-12"><label class="form-label">Título</label><input class="form-control" name="titulo" required></div><div class="col-12"><label class="form-label">Contenido</label><textarea class="form-control" name="contenido" rows="4" required></textarea></div><div class="col-md-6"><label class="form-label">Tipo</label><input class="form-control" name="tipo_aviso" value="COMUNICADO"></div><div class="col-md-6"><label class="form-label">Prioridad</label><select class="form-select" name="prioridad"><option>MEDIA</option><option>ALTA</option><option>URGENTE</option></select></div><div class="col-md-6"><label class="form-label">Fecha</label><input class="form-control" name="fecha_publicacion" value="{{ moment if false else '' }}"></div><div class="col-md-6"><label class="form-label">Estado</label><select class="form-select" name="estado"><option>PUBLICADO</option><option>ARCHIVADO</option></select></div><div class="col-12"><button class="btn btn-primary" type="submit">Guardar aviso</button></div></div></form></div></div><div class="col-lg-7"><div class="panel-card"><div class="panel-card__header"><h3 class="panel-card__title">CRUD de avisos</h3><a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">Refrescar</a></div><div class="table-responsive"><table class="table table-modern"><thead><tr><th>ID</th><th>Título</th><th>Tipo</th><th>Fecha</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{% for a in avisos %}<tr><td>#{{ a.id }}</td><td>{{ a.titulo }}</td><td>{{ a.tipo_aviso }}</td><td>{{ a.fecha_publicacion }} {{ a.hora_publicacion }}</td><td><span class="badge-soft">{{ a.estado }}</span></td><td><button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editAviso{{ a.id }}">Editar</button><form method="post" class="d-inline"><input type="hidden" name="action" value="delete"><input type="hidden" name="aviso_id" value="{{ a.id }}"><button class="btn btn-sm btn-outline-danger">Eliminar</button></form></td></tr><div class="modal fade" id="editAviso{{ a.id }}"><div class="modal-dialog"><div class="modal-content"><form method="post"><div class="modal-header"><h5 class="modal-title">Editar aviso</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" name="action" value="update"><input type="hidden" name="aviso_id" value="{{ a.id }}"><div class="mb-3"><label class="form-label">Título</label><input class="form-control" name="titulo" value="{{ a.titulo }}"></div><div class="mb-3"><label class="form-label">Contenido</label><textarea class="form-control" name="contenido" rows="4">{{ a.contenido }}</textarea></div><div class="row g-3"><div class="col-md-6"><label class="form-label">Tipo</label><input class="form-control" name="tipo_aviso" value="{{ a.tipo_aviso }}"></div><div class="col-md-6"><label class="form-label">Prioridad</label><input class="form-control" name="prioridad" value="{{ a.prioridad }}"></div><div class="col-md-6"><label class="form-label">Estado</label><input class="form-control" name="estado" value="{{ a.estado }}"></div></div></div><div class="modal-footer"><button class="btn btn-primary" type="submit">Guardar cambios</button></div></form></div></div></div>{% endfor %}</tbody></table></div></div></div></div>{% endblock %}
+{% extends 'dashboard/base.html' %}
+{% block page_title %}Avisos oficiales{% endblock %}
+
+{% block content %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #1a5fa8;">
+            <div class="metric-card__label">Total avisos</div>
+            <div class="metric-card__value">{{ avisos|length }}</div>
+            <div class="metric-card__hint">registrados</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #16a34a;">
+            <div class="metric-card__label">Publicados</div>
+            <div class="metric-card__value" style="color:#16a34a;">
+                {{ avisos|selectattr('estado','eq','PUBLICADO')|list|length }}
+            </div>
+            <div class="metric-card__hint">activos</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #dc2626;">
+            <div class="metric-card__label">Urgentes</div>
+            <div class="metric-card__value" style="color:#dc2626;">
+                {{ avisos|selectattr('prioridad','eq','URGENTE')|list|length }}
+            </div>
+            <div class="metric-card__hint">alta prioridad</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+
+    <!-- FORMULARIO CREAR -->
+    <div class="col-lg-4">
+        <div class="panel-card">
+            <div class="panel-card__header">
+                <h3 class="panel-card__title">
+                    <i class="bi bi-megaphone me-2" style="color:#1a5fa8;"></i>
+                    Nuevo aviso
+                </h3>
+            </div>
+
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Título <span style="color:red">*</span></label>
+                    <input class="form-control" name="titulo" placeholder="Ej: Corte de agua programado" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Contenido <span style="color:red">*</span></label>
+                    <textarea class="form-control" name="contenido" rows="5"
+                        placeholder="Descripción detallada del aviso..." required></textarea>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" name="tipo_aviso">
+                            <option value="COMUNICADO">COMUNICADO</option>
+                            <option value="ALERTA">ALERTA</option>
+                            <option value="MANTENIMIENTO">MANTENIMIENTO</option>
+                            <option value="CORTE">CORTE</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Prioridad</label>
+                        <select class="form-select" name="prioridad">
+                            <option value="MEDIA">MEDIA</option>
+                            <option value="ALTA">ALTA</option>
+                            <option value="URGENTE">URGENTE</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Fecha</label>
+                        <input class="form-control" type="date" name="fecha_publicacion">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select" name="estado">
+                            <option value="PUBLICADO">PUBLICADO</option>
+                            <option value="ARCHIVADO">ARCHIVADO</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-send me-1"></i> Publicar aviso
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TABLA AVISOS -->
+    <div class="col-lg-8">
+        <div class="panel-card">
+            <div class="panel-card__header">
+                <h3 class="panel-card__title">
+                    <i class="bi bi-list-ul me-2" style="color:#1a5fa8;"></i>
+                    Avisos registrados
+                </h3>
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">
+                    <i class="bi bi-arrow-clockwise"></i> Refrescar
+                </a>
+            </div>
+
+            {% if avisos %}
+            <div class="list-stack">
+                {% for a in avisos %}
+                <div style="
+                    border: 1px solid #e2e8f0;
+                    border-radius: 14px;
+                    padding: 14px 16px;
+                    transition: box-shadow .2s;
+                    border-left: 4px solid
+                    {% if a.prioridad == 'URGENTE' %}#dc2626
+                    {% elif a.prioridad == 'ALTA' %}#f59e0b
+                    {% else %}#1a5fa8{% endif %};
+                " onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'"
+                   onmouseout="this.style.boxShadow='none'">
+
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:10px;">
+                        <div style="flex:1;">
+                            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:4px;">
+                                <span style="font-weight:700; font-size:.95rem; color:#0f172a;">{{ a.titulo }}</span>
+
+                                <!-- Tipo -->
+                                <span style="
+                                    padding:2px 8px; border-radius:6px;
+                                    font-size:.72rem; font-weight:600;
+                                    background:#f1f5f9; color:#475569;
+                                ">{{ a.tipo_aviso }}</span>
+
+                                <!-- Prioridad -->
+                                {% if a.prioridad == 'URGENTE' %}
+                                    <span style="padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700;background:#fee2e2;color:#dc2626;">
+                                        🔴 URGENTE
+                                    </span>
+                                {% elif a.prioridad == 'ALTA' %}
+                                    <span style="padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700;background:#fff3cd;color:#856404;">
+                                        🟡 ALTA
+                                    </span>
+                                {% else %}
+                                    <span style="padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700;background:#e0ecff;color:#1d4ed8;">
+                                        🔵 MEDIA
+                                    </span>
+                                {% endif %}
+
+                                <!-- Estado -->
+                                {% if a.estado == 'PUBLICADO' %}
+                                    <span style="padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:700;background:#d1e7dd;color:#0f5132;">
+                                        ✓ PUBLICADO
+                                    </span>
+                                {% else %}
+                                    <span style="padding:2px 8px;border-radius:6px;font-size:.72rem;font-weight:600;background:#f1f5f9;color:#64748b;">
+                                        ARCHIVADO
+                                    </span>
+                                {% endif %}
+                            </div>
+
+                            <div style="font-size:.82rem; color:#64748b; margin-bottom:4px;">
+                                {{ a.contenido[:120] ~ '...' if a.contenido and a.contenido|length > 120 else (a.contenido or '') }}
+                            </div>
+
+                            <div style="font-size:.75rem; color:#94a3b8;">
+                                <i class="bi bi-calendar3"></i>
+                                {{ a.fecha_publicacion or '-' }}
+                                {% if a.hora_publicacion %}· {{ a.hora_publicacion }}{% endif %}
+                            </div>
+                        </div>
+
+                        <!-- ACCIONES -->
+                        <div style="display:flex; gap:6px; flex-shrink:0;">
+                            <button class="btn btn-sm btn-outline-primary"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#editAviso{{ a.id }}"
+                                    style="border-radius:8px; font-size:.78rem; padding:4px 10px;">
+                                <i class="bi bi-pencil"></i>
+                            </button>
+                            <form method="post" class="d-inline">
+                                <input type="hidden" name="action" value="delete">
+                                <input type="hidden" name="aviso_id" value="{{ a.id }}">
+                                <button class="btn btn-sm btn-outline-danger"
+                                        onclick="return confirm('¿Eliminar este aviso?')"
+                                        style="border-radius:8px; font-size:.78rem; padding:4px 10px;">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- MODAL EDITAR -->
+                <div class="modal fade" id="editAviso{{ a.id }}" tabindex="-1">
+                    <div class="modal-dialog modal-lg">
+                        <div class="modal-content" style="border-radius:16px; border:none;">
+                            <form method="post">
+                                <div class="modal-header" style="background:linear-gradient(135deg,#1a5fa8,#3b82f6);color:white;border-radius:16px 16px 0 0;">
+                                    <h5 class="modal-title">
+                                        <i class="bi bi-pencil-square me-2"></i>
+                                        Editar aviso #{{ a.id }}
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                </div>
+
+                                <div class="modal-body p-4">
+                                    <input type="hidden" name="action" value="update">
+                                    <input type="hidden" name="aviso_id" value="{{ a.id }}">
+
+                                    <div class="row g-3">
+                                        <div class="col-12">
+                                            <label class="form-label">Título</label>
+                                            <input class="form-control" name="titulo" value="{{ a.titulo }}">
+                                        </div>
+                                        <div class="col-12">
+                                            <label class="form-label">Contenido</label>
+                                            <textarea class="form-control" name="contenido" rows="5">{{ a.contenido }}</textarea>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Tipo</label>
+                                            <select class="form-select" name="tipo_aviso">
+                                                <option {% if a.tipo_aviso == 'COMUNICADO' %}selected{% endif %}>COMUNICADO</option>
+                                                <option {% if a.tipo_aviso == 'ALERTA' %}selected{% endif %}>ALERTA</option>
+                                                <option {% if a.tipo_aviso == 'MANTENIMIENTO' %}selected{% endif %}>MANTENIMIENTO</option>
+                                                <option {% if a.tipo_aviso == 'CORTE' %}selected{% endif %}>CORTE</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Prioridad</label>
+                                            <select class="form-select" name="prioridad">
+                                                <option {% if a.prioridad == 'MEDIA' %}selected{% endif %}>MEDIA</option>
+                                                <option {% if a.prioridad == 'ALTA' %}selected{% endif %}>ALTA</option>
+                                                <option {% if a.prioridad == 'URGENTE' %}selected{% endif %}>URGENTE</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">Estado</label>
+                                            <select class="form-select" name="estado">
+                                                <option {% if a.estado == 'PUBLICADO' %}selected{% endif %}>PUBLICADO</option>
+                                                <option {% if a.estado == 'ARCHIVADO' %}selected{% endif %}>ARCHIVADO</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="modal-footer" style="border-top:1px solid #e2e8f0;">
+                                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                                    <button class="btn btn-primary" type="submit">
+                                        <i class="bi bi-check-lg me-1"></i> Guardar cambios
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-megaphone" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
+                No hay avisos registrados.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

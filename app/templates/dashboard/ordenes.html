@@ -1,1 +1,253 @@
-{% extends 'dashboard/base.html' %}{% block page_title %}Órdenes técnicas{% endblock %}{% block content %}<div class="row g-3"><div class="col-lg-4"><div class="card shadow-sm border-0"><div class="card-body"><h5>Nueva orden</h5><form method="post" class="vstack gap-2"><select class="form-select" name="tecnico_id" required><option value="">Técnico</option>{% for t in tecnicos %}<option value="{{ t.id }}">{{ t.nombre_completo }}</option>{% endfor %}</select><select class="form-select" name="incidencia_id"><option value="">Incidencia opcional</option>{% for i in incidencias %}<option value="{{ i.id }}">#{{ i.id }} - {{ i.titulo or i.tipo_incidencia }}</option>{% endfor %}</select><input class="form-control" name="titulo" placeholder="Título" required><textarea class="form-control" name="descripcion" placeholder="Descripción" rows="4"></textarea><div class="row g-2"><div class="col"><input class="form-control" name="fecha" placeholder="Fecha"></div><div class="col"><input class="form-control" name="hora" placeholder="Hora"></div></div><div class="row g-2"><div class="col"><input class="form-control" name="latitud" placeholder="Latitud"></div><div class="col"><input class="form-control" name="longitud" placeholder="Longitud"></div></div><button class="btn btn-primary">Crear orden</button></form></div></div></div><div class="col-lg-8"><div class="card shadow-sm border-0"><div class="card-body"><div class="d-flex justify-content-between align-items-center"><h5>Órdenes registradas</h5><a class="btn btn-outline-primary btn-sm" href="{{ url_for('dashboard.ordenes_view') }}">Refrescar</a></div><div class="table-responsive"><table class="table align-middle"><thead><tr><th>ID</th><th>Técnico</th><th>Título</th><th>Estado</th><th>Fecha</th></tr></thead><tbody>{% for o in ordenes %}<tr><td>{{ o.id }}</td><td>{{ o.tecnico.nombre_completo if o.tecnico else '-' }}</td><td>{{ o.titulo }}</td><td><span class="badge bg-light text-dark">{{ o.estado }}</span></td><td>{{ o.fecha }} {{ o.hora }}</td></tr>{% else %}<tr><td colspan="5" class="text-center text-muted">Sin órdenes.</td></tr>{% endfor %}</tbody></table></div></div></div></div></div>{% endblock %}
+{% extends 'dashboard/base.html' %}
+{% block page_title %}Órdenes técnicas{% endblock %}
+
+{% block content %}
+
+{% set total = ordenes|length %}
+{% set asignadas = ordenes|selectattr('estado','eq','ASIGNADA')|list|length %}
+{% set en_proceso = ordenes|selectattr('estado','eq','EN_PROCESO')|list|length %}
+{% set finalizadas = ordenes|selectattr('estado','eq','FINALIZADA')|list|length %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left:4px solid #1a5fa8;">
+            <div class="metric-card__label">Total órdenes</div>
+            <div class="metric-card__value">{{ total }}</div>
+            <div class="metric-card__hint">registradas</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left:4px solid #f59e0b;">
+            <div class="metric-card__label">Asignadas</div>
+            <div class="metric-card__value" style="color:#f59e0b;">{{ asignadas }}</div>
+            <div class="metric-card__hint">por atender</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left:4px solid #3b82f6;">
+            <div class="metric-card__label">En proceso</div>
+            <div class="metric-card__value" style="color:#3b82f6;">{{ en_proceso }}</div>
+            <div class="metric-card__hint">en ejecución</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left:4px solid #16a34a;">
+            <div class="metric-card__label">Finalizadas</div>
+            <div class="metric-card__value" style="color:#16a34a;">{{ finalizadas }}</div>
+            <div class="metric-card__hint">completadas</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3">
+
+    <!-- FORMULARIO -->
+    <div class="col-lg-4">
+        <div class="panel-card">
+            <div class="panel-card__header">
+                <h3 class="panel-card__title">
+                    <i class="bi bi-tools me-2" style="color:#1a5fa8;"></i>
+                    Nueva orden
+                </h3>
+            </div>
+
+            <form method="post">
+                <div class="mb-3">
+                    <label class="form-label">Técnico <span style="color:red">*</span></label>
+                    <select class="form-select" name="tecnico_id" required>
+                        <option value="">Seleccionar técnico...</option>
+                        {% for t in tecnicos %}
+                        <option value="{{ t.id }}">{{ t.nombre_completo }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Incidencia relacionada</label>
+                    <select class="form-select" name="incidencia_id">
+                        <option value="">Sin incidencia</option>
+                        {% for i in incidencias %}
+                        <option value="{{ i.id }}">#{{ i.id }} — {{ i.titulo or i.tipo_incidencia }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Título <span style="color:red">*</span></label>
+                    <input class="form-control" name="titulo" placeholder="Ej: Reparación fuga sector norte" required>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Descripción</label>
+                    <textarea class="form-control" name="descripcion" rows="3"
+                        placeholder="Detalle de la actividad..."></textarea>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label">Prioridad</label>
+                    <select class="form-select" name="prioridad">
+                        <option value="MEDIA">MEDIA</option>
+                        <option value="ALTA">ALTA</option>
+                        <option value="BAJA">BAJA</option>
+                    </select>
+                </div>
+
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <label class="form-label">Fecha</label>
+                        <input class="form-control" type="date" name="fecha">
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label">Hora</label>
+                        <input class="form-control" type="time" name="hora">
+                    </div>
+                </div>
+
+                <div style="background:#f8fafc;border-radius:12px;padding:10px;margin-bottom:12px;">
+                    <div style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">
+                        Coordenadas GPS (opcional)
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <input class="form-control form-control-sm" name="latitud" placeholder="Latitud">
+                        </div>
+                        <div class="col-6">
+                            <input class="form-control form-control-sm" name="longitud" placeholder="Longitud">
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-plus-circle me-1"></i> Crear orden
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- TABLA -->
+    <div class="col-lg-8">
+        <div class="panel-card">
+            <div class="panel-card__header">
+                <h3 class="panel-card__title">
+                    <i class="bi bi-list-check me-2" style="color:#1a5fa8;"></i>
+                    Órdenes registradas
+                </h3>
+                <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.ordenes_view') }}">
+                    <i class="bi bi-arrow-clockwise"></i> Refrescar
+                </a>
+            </div>
+
+            {% if ordenes %}
+            <div class="list-stack">
+                {% for o in ordenes %}
+                <div style="
+                    border:1px solid #e2e8f0;
+                    border-radius:14px;
+                    padding:14px 16px;
+                    border-left:4px solid
+                    {% if o.estado == 'FINALIZADA' %}#16a34a
+                    {% elif o.estado == 'EN_PROCESO' %}#3b82f6
+                    {% elif o.estado == 'CANCELADA' %}#dc2626
+                    {% else %}#f59e0b{% endif %};
+                    transition:box-shadow .2s;
+                " onmouseover="this.style.boxShadow='0 4px 16px rgba(0,0,0,.08)'"
+                   onmouseout="this.style.boxShadow='none'">
+
+                    <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;">
+                        <div style="flex:1;">
+
+                            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+                                <span style="font-weight:700;font-size:.92rem;color:#0f172a;">{{ o.titulo }}</span>
+                                <span style="font-size:.72rem;color:#94a3b8;font-weight:600;">#{{ o.id }}</span>
+
+                                <!-- Estado -->
+                                {% if o.estado == 'ASIGNADA' %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:#fff3cd;color:#856404;border:1px solid #ffc107;">
+                                    <i class="bi bi-clock"></i> ASIGNADA
+                                </span>
+                                {% elif o.estado == 'EN_PROCESO' %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:#cfe2ff;color:#084298;border:1px solid #0d6efd;">
+                                    <i class="bi bi-gear"></i> EN PROCESO
+                                </span>
+                                {% elif o.estado == 'FINALIZADA' %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:#d1e7dd;color:#0f5132;border:1px solid #198754;">
+                                    <i class="bi bi-check-circle"></i> FINALIZADA
+                                </span>
+                                {% elif o.estado == 'CANCELADA' %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:700;background:#fee2e2;color:#dc2626;border:1px solid #dc2626;">
+                                    <i class="bi bi-x-circle"></i> CANCELADA
+                                </span>
+                                {% else %}
+                                <span style="padding:3px 10px;border-radius:999px;font-size:.72rem;font-weight:600;background:#f1f5f9;color:#64748b;">
+                                    {{ o.estado }}
+                                </span>
+                                {% endif %}
+
+                                <!-- Prioridad -->
+                                {% if o.prioridad == 'ALTA' %}
+                                <span style="padding:3px 8px;border-radius:6px;font-size:.72rem;font-weight:700;background:#fee2e2;color:#dc2626;">
+                                    🔴 ALTA
+                                </span>
+                                {% elif o.prioridad == 'MEDIA' %}
+                                <span style="padding:3px 8px;border-radius:6px;font-size:.72rem;font-weight:600;background:#fff3cd;color:#856404;">
+                                    🟡 MEDIA
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            {% if o.descripcion %}
+                            <div style="font-size:.82rem;color:#64748b;margin-bottom:6px;">
+                                {{ o.descripcion[:100] ~ '...' if o.descripcion|length > 100 else o.descripcion }}
+                            </div>
+                            {% endif %}
+
+                            <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                                <div style="font-size:.75rem;color:#64748b;">
+                                    <i class="bi bi-person-gear" style="color:#1a5fa8;"></i>
+                                    {{ o.tecnico.nombre_completo if o.tecnico else '-' }}
+                                </div>
+                                <div style="font-size:.75rem;color:#64748b;">
+                                    <i class="bi bi-calendar3" style="color:#1a5fa8;"></i>
+                                    {{ o.fecha or '-' }}
+                                    {% if o.hora %}· {{ o.hora }}{% endif %}
+                                </div>
+                                {% if o.incidencia %}
+                                <div style="font-size:.75rem;color:#64748b;">
+                                    <i class="bi bi-exclamation-triangle" style="color:#f59e0b;"></i>
+                                    Incidencia #{{ o.incidencia_id }}
+                                </div>
+                                {% endif %}
+                                {% if o.latitud and o.longitud %}
+                                <a href="https://maps.google.com/?q={{ o.latitud }},{{ o.longitud }}"
+                                   target="_blank"
+                                   style="font-size:.75rem;color:#1a5fa8;text-decoration:none;">
+                                    <i class="bi bi-geo-alt-fill"></i> Ver en mapa
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <!-- ACCIÓN -->
+                        <a href="{{ url_for('dashboard.imprimir_orden_dashboard', orden_id=o.id) }}"
+                           target="_blank"
+                           class="btn btn-sm btn-outline-secondary"
+                           style="border-radius:8px;font-size:.78rem;padding:4px 10px;flex-shrink:0;">
+                            <i class="bi bi-printer"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-tools" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
+                No hay órdenes registradas.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

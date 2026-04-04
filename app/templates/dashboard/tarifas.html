@@ -1,1 +1,262 @@
-{% extends "dashboard/base.html" %}{% block content %}<div class="topbar"><div class="page-title"><h1>Tarifas personalizadas</h1><p>Base de consumo, valor base, adicional y multa por vivienda/usuario.</p></div></div><div class="card"><form method="post" class="grid-form"><input name="nombre" placeholder="Nombre tarifa" class="form-control"><input name="socio_id" placeholder="ID socio" class="form-control"><input name="vivienda_id" placeholder="ID vivienda" class="form-control"><input name="base_consumo_m3" placeholder="Base consumo m3" class="form-control"><input name="valor_base" placeholder="Valor base" class="form-control"><input name="valor_adicional_m3" placeholder="Valor adicional/m3" class="form-control"><input name="multa_atraso" placeholder="Multa atraso" class="form-control"><button class="btn btn-primary" type="submit">Guardar</button></form></div><div class="card"><div class="table-wrap"><table class="table"><tr><th>ID</th><th>Nombre</th><th>Socio</th><th>Vivienda</th><th>Base</th><th>Base $</th><th>Adic/m3</th><th>Multa</th><th>Estado</th></tr>{% for t in tarifas %}<tr><td>{{t.id}}</td><td>{{t.nombre}}</td><td>{{t.socio_id}}</td><td>{{t.vivienda_id}}</td><td>{{t.base_consumo_m3}}</td><td>{{t.valor_base}}</td><td>{{t.valor_adicional_m3}}</td><td>{{t.multa_atraso}}</td><td>{{t.estado}}</td></tr>{% endfor %}</table></div></div>{% endblock %}
+{% extends 'dashboard/base.html' %}
+{% block page_title %}Tarifas{% endblock %}
+
+{% block content %}
+<style>
+  .tarifa-hero { background: linear-gradient(135deg, #1a3a6b 0%, #1a5fa8 100%); border-radius: 20px; padding: 28px; margin-bottom: 24px; color: #fff; display: flex; align-items: center; justify-content: space-between; }
+  .tarifa-hero h2 { font-size: 1.6rem; font-weight: 800; margin: 0; }
+  .tarifa-hero p { margin: 4px 0 0; opacity: .75; font-size: .9rem; }
+  .kpi-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 24px; }
+  .kpi-box { background: #fff; border-radius: 14px; padding: 18px; border-left: 4px solid var(--kc); box-shadow: 0 2px 8px rgba(15,23,42,.06); }
+  .kpi-box .kv { font-size: 2rem; font-weight: 800; color: var(--kc); line-height: 1; }
+  .kpi-box .kl { font-size: .75rem; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+  .grid-main { display: grid; grid-template-columns: 380px 1fr; gap: 20px; }
+  @media(max-width:1000px){ .grid-main{ grid-template-columns: 1fr; } }
+  .form-card { background: #fff; border-radius: 18px; box-shadow: 0 2px 12px rgba(15,23,42,.07); overflow: hidden; }
+  .form-card__head { background: linear-gradient(135deg,#1a3a6b,#1a5fa8); padding: 18px 22px; color: #fff; }
+  .form-card__head h3 { margin: 0; font-size: 1rem; font-weight: 700; }
+  .form-card__body { padding: 22px; }
+  .section-box { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 14px; border: 1px solid #e2e8f0; }
+  .section-box__title { font-size: .72rem; font-weight: 800; color: #64748b; text-transform: uppercase; letter-spacing: .6px; margin-bottom: 12px; }
+  .table-card { background: #fff; border-radius: 18px; box-shadow: 0 2px 12px rgba(15,23,42,.07); overflow: hidden; }
+  .table-card__head { padding: 18px 22px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; }
+  .table-card__head h3 { margin: 0; font-size: 1rem; font-weight: 700; color: #0f172a; }
+  .t-mod { width: 100%; border-collapse: collapse; font-size: .85rem; }
+  .t-mod thead th { padding: 10px 14px; background: #f8fafc; color: #64748b; font-size: .72rem; text-transform: uppercase; letter-spacing: .5px; border-bottom: 2px solid #e2e8f0; white-space: nowrap; }
+  .t-mod tbody td { padding: 12px 14px; border-bottom: 1px solid #f1f5f9; vertical-align: middle; }
+  .t-mod tbody tr:hover td { background: #f8fafc; }
+  .badge-activa   { background: #d1e7dd; color: #0f5132; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 700; }
+  .badge-inactiva { background: #f1f5f9; color: #64748b; padding: 3px 10px; border-radius: 999px; font-size: .72rem; font-weight: 600; }
+</style>
+
+<!-- HERO -->
+<div class="tarifa-hero">
+  <div>
+    <h2>⚙️ Gestión de Tarifas</h2>
+    <p>Configura los valores de consumo y cobro para cada socio</p>
+  </div>
+  <div style="text-align:right;">
+    <div style="font-size:2.2rem;font-weight:800;">{{ tarifas|length }}</div>
+    <div style="opacity:.75;font-size:.85rem;">tarifas registradas</div>
+  </div>
+</div>
+
+<!-- KPIs -->
+<div class="kpi-strip">
+  <div class="kpi-box" style="--kc:#1a5fa8">
+    <div class="kv">{{ tarifas|length }}</div>
+    <div class="kl">Total tarifas</div>
+  </div>
+  <div class="kpi-box" style="--kc:#16a34a">
+    <div class="kv">{{ tarifas|selectattr('estado','eq','ACTIVA')|list|length }}</div>
+    <div class="kl">Activas</div>
+  </div>
+  <div class="kpi-box" style="--kc:#f59e0b">
+    <div class="kv">{{ tarifas|rejectattr('estado','eq','ACTIVA')|list|length }}</div>
+    <div class="kl">Inactivas</div>
+  </div>
+</div>
+
+<!-- GRID PRINCIPAL -->
+<div class="grid-main">
+
+  <!-- FORMULARIO NUEVA TARIFA -->
+  <div class="form-card">
+    <div class="form-card__head">
+      <h3><i class="bi bi-plus-circle me-2"></i>Nueva tarifa</h3>
+    </div>
+    <div class="form-card__body">
+      <form method="post">
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+          <input class="form-control" name="nombre" placeholder="Ej: Tarifa residencial básica" required>
+        </div>
+
+        <div class="row g-2 mb-3">
+          <div class="col-7">
+            <label class="form-label fw-semibold" style="font-size:.82rem;">Socio</label>
+            <select class="form-select form-select-sm" name="socio_id">
+              <option value="">Seleccionar...</option>
+              {% for u in usuarios %}
+              <option value="{{ u.socio.id if u.socio else '' }}">{{ u.nombre_completo }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div class="col-5">
+            <label class="form-label fw-semibold" style="font-size:.82rem;">ID Vivienda</label>
+            <input class="form-control form-control-sm" name="vivienda_id" placeholder="ID" type="number" min="0">
+          </div>
+        </div>
+
+        <div class="section-box">
+          <div class="section-box__title">💰 Valores de consumo</div>
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label" style="font-size:.8rem;">Base consumo (m³)</label>
+              <input class="form-control form-control-sm" name="base_consumo_m3" placeholder="Ej: 10" type="number" step="any" min="0">
+              <div style="font-size:.7rem;color:#94a3b8;margin-top:2px;">m³ incluidos en cargo fijo</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-size:.8rem;">Valor base ($)</label>
+              <input class="form-control form-control-sm" name="valor_base" placeholder="Ej: 3.00" type="number" step="any" min="0">
+              <div style="font-size:.7rem;color:#94a3b8;margin-top:2px;">cargo fijo mensual</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-size:.8rem;">Valor adicional/m³ ($)</label>
+              <input class="form-control form-control-sm" name="valor_adicional_m3" placeholder="Ej: 0.50" type="number" step="any" min="0">
+              <div style="font-size:.7rem;color:#94a3b8;margin-top:2px;">por m³ extra</div>
+            </div>
+            <div class="col-6">
+              <label class="form-label" style="font-size:.8rem;">Multa atraso ($)</label>
+              <input class="form-control form-control-sm" name="multa_atraso" placeholder="Ej: 1.00" type="number" step="any" min="0">
+              <div style="font-size:.7rem;color:#94a3b8;margin-top:2px;">por pago tardío</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Ejemplo -->
+        <div style="background:#eff6ff;border-radius:10px;padding:12px;margin-bottom:16px;border:1px solid #bfdbfe;">
+          <div style="font-size:.72rem;font-weight:700;color:#1a5fa8;margin-bottom:4px;">ℹ️ EJEMPLO DE CÁLCULO</div>
+          <div style="font-size:.78rem;color:#334155;">
+            Base=10m³, valor base=$3.00, adicional=$0.50/m³:<br>
+            • Consumo 8m³ → <strong>$3.00</strong><br>
+            • Consumo 15m³ → $3.00 + (5×$0.50) = <strong>$5.50</strong>
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Estado</label>
+          <select class="form-select" name="estado">
+            <option value="ACTIVA">✓ ACTIVA</option>
+            <option value="INACTIVA">INACTIVA</option>
+          </select>
+        </div>
+
+        <button class="btn btn-primary w-100" type="submit" style="border-radius:10px;font-weight:700;">
+          <i class="bi bi-check-lg me-1"></i> Guardar tarifa
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- TABLA -->
+  <div class="table-card">
+    <div class="table-card__head">
+      <h3><i class="bi bi-table me-2" style="color:#1a5fa8;"></i>Tarifas registradas</h3>
+      <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}" style="border-radius:8px;">
+        <i class="bi bi-arrow-clockwise"></i> Refrescar
+      </a>
+    </div>
+    <div class="table-responsive">
+      <table class="t-mod">
+        <thead>
+          <tr>
+            <th>#</th><th>Nombre</th><th>Socio</th>
+            <th>Base m³</th><th>Valor base</th>
+            <th>Adic/m³</th><th>Multa</th>
+            <th>Estado</th><th></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in tarifas %}
+          <tr>
+            <td><span style="font-weight:700;color:#1a5fa8;">#{{ t.id }}</span></td>
+            <td>
+              <div style="font-weight:600;color:#0f172a;">{{ t.nombre }}</div>
+              {% if t.vivienda_id %}<div style="font-size:.72rem;color:#94a3b8;">Vivienda #{{ t.vivienda_id }}</div>{% endif %}
+            </td>
+            <td>
+              {% if t.socio and t.socio.usuario %}
+                <div style="font-size:.82rem;font-weight:600;">{{ t.socio.usuario.nombre_completo }}</div>
+                <div style="font-size:.72rem;color:#94a3b8;">{{ t.socio.usuario.cedula }}</div>
+              {% else %}
+                <span style="color:#94a3b8;font-size:.82rem;">General</span>
+              {% endif %}
+            </td>
+            <td><strong>{{ t.base_consumo_m3 }} m³</strong></td>
+            <td><strong style="color:#16a34a;">${{ '%.2f'|format(t.valor_base or 0) }}</strong></td>
+            <td><strong style="color:#1a5fa8;">${{ '%.2f'|format(t.valor_adicional_m3 or 0) }}</strong></td>
+            <td><strong style="color:#dc2626;">${{ '%.2f'|format(t.multa_atraso or 0) }}</strong></td>
+            <td>
+              {% if t.estado == 'ACTIVA' %}
+                <span class="badge-activa">✓ ACTIVA</span>
+              {% else %}
+                <span class="badge-inactiva">INACTIVA</span>
+              {% endif %}
+            </td>
+            <td>
+              <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal"
+                      data-bs-target="#editTarifa{{ t.id }}" style="border-radius:8px;font-size:.78rem;">
+                <i class="bi bi-pencil"></i>
+              </button>
+            </td>
+          </tr>
+
+          <!-- MODAL EDITAR -->
+          <div class="modal fade" id="editTarifa{{ t.id }}" tabindex="-1">
+            <div class="modal-dialog">
+              <div class="modal-content" style="border-radius:18px;border:none;overflow:hidden;">
+                <form method="post">
+                  <div class="modal-header" style="background:linear-gradient(135deg,#1a3a6b,#1a5fa8);color:#fff;">
+                    <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Editar tarifa #{{ t.id }}</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                  </div>
+                  <div class="modal-body p-4">
+                    <input type="hidden" name="tarifa_asignada_id" value="{{ t.id }}">
+                    <div class="mb-3">
+                      <label class="form-label fw-semibold">Nombre</label>
+                      <input class="form-control" name="nombre" value="{{ t.nombre }}">
+                    </div>
+                    <div class="section-box">
+                      <div class="section-box__title">💰 Valores</div>
+                      <div class="row g-2">
+                        <div class="col-6">
+                          <label class="form-label" style="font-size:.8rem;">Base consumo (m³)</label>
+                          <input class="form-control form-control-sm" name="base_consumo_m3" value="{{ t.base_consumo_m3 }}" type="number" step="any" min="0">
+                        </div>
+                        <div class="col-6">
+                          <label class="form-label" style="font-size:.8rem;">Valor base ($)</label>
+                          <input class="form-control form-control-sm" name="valor_base" value="{{ t.valor_base }}" type="number" step="any" min="0">
+                        </div>
+                        <div class="col-6">
+                          <label class="form-label" style="font-size:.8rem;">Valor adicional/m³ ($)</label>
+                          <input class="form-control form-control-sm" name="valor_adicional_m3" value="{{ t.valor_adicional_m3 }}" type="number" step="any" min="0">
+                        </div>
+                        <div class="col-6">
+                          <label class="form-label" style="font-size:.8rem;">Multa atraso ($)</label>
+                          <input class="form-control form-control-sm" name="multa_atraso" value="{{ t.multa_atraso }}" type="number" step="any" min="0">
+                        </div>
+                      </div>
+                    </div>
+                    <div class="mb-2">
+                      <label class="form-label fw-semibold">Estado</label>
+                      <select class="form-select" name="estado">
+                        <option {% if t.estado == 'ACTIVA' %}selected{% endif %}>ACTIVA</option>
+                        <option {% if t.estado == 'INACTIVA' %}selected{% endif %}>INACTIVA</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div class="modal-footer" style="border-top:1px solid #e2e8f0;">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary" type="submit" style="font-weight:700;">
+                      <i class="bi bi-check-lg me-1"></i> Guardar cambios
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </div>
+          {% else %}
+          <tr>
+            <td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">
+              <i class="bi bi-sliders" style="font-size:2rem;display:block;margin-bottom:8px;"></i>
+              No hay tarifas registradas.
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

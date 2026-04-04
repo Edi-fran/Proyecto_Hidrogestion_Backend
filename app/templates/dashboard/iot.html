@@ -1,0 +1,355 @@
+{% extends 'dashboard/base.html' %}
+{% block title %}IoT — HidroGestión{% endblock %}
+{% block content %}
+
+<style>
+  :root {
+    --iot-blue: #0ea5e9;
+    --iot-green: #10b981;
+    --iot-red: #ef4444;
+    --iot-orange: #f59e0b;
+    --iot-dark: #0f172a;
+    --iot-card: #1e293b;
+    --iot-border: #334155;
+  }
+
+  .iot-page { background: var(--iot-dark); min-height: 100vh; padding: 24px; color: #e2e8f0; }
+
+  /* HEADER */
+  .iot-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }
+  .iot-header h1 { font-size: 28px; font-weight: 800; color: #fff; display: flex; align-items: center; gap: 12px; }
+  .iot-header h1 span { font-size: 32px; }
+  .iot-status { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+  .iot-status.online  { background: rgba(16,185,129,.15); color: var(--iot-green); border: 1px solid var(--iot-green); }
+  .iot-status.offline { background: rgba(239,68,68,.15);  color: var(--iot-red);   border: 1px solid var(--iot-red); }
+  .iot-status .dot { width: 8px; height: 8px; border-radius: 50%; animation: pulse 1.5s infinite; }
+  .iot-status.online  .dot { background: var(--iot-green); }
+  .iot-status.offline .dot { background: var(--iot-red); animation: none; }
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.5;transform:scale(1.3)} }
+
+  /* KPIs */
+  .iot-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .iot-kpi { background: var(--iot-card); border-radius: 16px; padding: 20px; border: 1px solid var(--iot-border); position: relative; overflow: hidden; }
+  .iot-kpi::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--kpi-color, var(--iot-blue)); }
+  .iot-kpi .kpi-icon { font-size: 28px; margin-bottom: 8px; }
+  .iot-kpi .kpi-val { font-size: 28px; font-weight: 800; color: var(--kpi-color, var(--iot-blue)); line-height: 1; }
+  .iot-kpi .kpi-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: .5px; margin-top: 4px; }
+  .iot-kpi .kpi-sub { font-size: 12px; color: #94a3b8; margin-top: 4px; }
+
+  /* GRID */
+  .iot-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  @media(max-width:900px){ .iot-grid{ grid-template-columns: 1fr; } }
+
+  /* CARDS */
+  .iot-card { background: var(--iot-card); border-radius: 16px; padding: 20px; border: 1px solid var(--iot-border); }
+  .iot-card h3 { font-size: 14px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: .5px; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+
+  /* TIEMPO REAL */
+  .tr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .tr-item { background: #0f172a; border-radius: 10px; padding: 12px; }
+  .tr-item .tr-label { font-size: 10px; color: #64748b; text-transform: uppercase; margin-bottom: 4px; }
+  .tr-item .tr-val { font-size: 20px; font-weight: 800; color: #e2e8f0; }
+  .tr-item .tr-unit { font-size: 11px; color: #64748b; }
+
+  /* FLUJO */
+  .flujo-badge { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 999px; font-weight: 800; font-size: 15px; margin-top: 8px; }
+  .flujo-badge.activo  { background: rgba(16,185,129,.15); color: var(--iot-green); border: 2px solid var(--iot-green); }
+  .flujo-badge.detenido{ background: rgba(239,68,68,.15);  color: var(--iot-red);   border: 2px solid var(--iot-red); }
+
+  /* GRÁFICA */
+  .chart-wrap { position: relative; height: 220px; }
+  canvas { width: 100% !important; }
+
+  /* TABLA */
+  .iot-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .iot-table th { text-align: left; padding: 10px 12px; color: #64748b; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid var(--iot-border); }
+  .iot-table td { padding: 10px 12px; border-bottom: 1px solid rgba(51,65,85,.5); color: #cbd5e1; }
+  .iot-table tr:hover td { background: rgba(14,165,233,.05); }
+  .badge-iot { background: rgba(14,165,233,.15); color: var(--iot-blue); padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+  .badge-ok  { background: rgba(16,185,129,.15); color: var(--iot-green); padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+
+  /* DEVICE INFO */
+  .device-rows { display: flex; flex-direction: column; gap: 8px; }
+  .device-row  { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid rgba(51,65,85,.5); }
+  .device-row .dr-label { font-size: 13px; color: #64748b; }
+  .device-row .dr-val   { font-size: 13px; font-weight: 700; color: #e2e8f0; font-family: monospace; }
+
+  /* REFRESH */
+  .iot-refresh { display: flex; justify-content: flex-end; margin-bottom: 16px; }
+  .btn-refresh { background: rgba(14,165,233,.15); color: var(--iot-blue); border: 1px solid var(--iot-blue); padding: 8px 18px; border-radius: 10px; font-weight: 700; font-size: 13px; cursor: pointer; text-decoration: none; transition: all .2s; }
+  .btn-refresh:hover { background: var(--iot-blue); color: #fff; }
+</style>
+
+<div class="iot-page">
+
+  <!-- HEADER -->
+  <div class="iot-header">
+    <h1><span>💧</span> Monitor IoT — Caudalímetro</h1>
+    <div class="iot-refresh">
+      <a href="{{ url_for('dashboard.iot_view') }}" class="btn-refresh">↺ Actualizar</a>
+    </div>
+    <div class="iot-status {{ 'online' if esp32_online else 'offline' }}">
+      <div class="dot"></div>
+      {{ 'ESP32 EN LÍNEA' if esp32_online else 'ESP32 DESCONECTADO' }}
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="iot-kpis">
+    <div class="iot-kpi" style="--kpi-color: #0ea5e9">
+      <div class="kpi-icon">💧</div>
+      <div class="kpi-val">{{ esp32_data.caudal_lpm | default(0) | round(2) }}</div>
+      <div class="kpi-label">Caudal actual</div>
+      <div class="kpi-sub">Litros / minuto</div>
+    </div>
+    <div class="iot-kpi" style="--kpi-color: #10b981">
+      <div class="kpi-icon">📊</div>
+      <div class="kpi-val">{{ esp32_data.caudal_m3h | default(0) | round(4) }}</div>
+      <div class="kpi-label">Caudal m³/h</div>
+      <div class="kpi-sub">Metros cúbicos / hora</div>
+    </div>
+    <div class="iot-kpi" style="--kpi-color: #6366f1">
+      <div class="kpi-icon">🪣</div>
+      <div class="kpi-val">{{ esp32_data.litros_totales | default(0) | round(1) }}</div>
+      <div class="kpi-label">Litros totales</div>
+      <div class="kpi-sub">Acumulado sesión</div>
+    </div>
+    <div class="iot-kpi" style="--kpi-color: #f59e0b">
+      <div class="kpi-icon">📐</div>
+      <div class="kpi-val">{{ esp32_data.m3_totales | default(0) | round(4) }}</div>
+      <div class="kpi-label">m³ totales</div>
+      <div class="kpi-sub">Acumulado sesión</div>
+    </div>
+    <div class="iot-kpi" style="--kpi-color: #ec4899">
+      <div class="kpi-icon">📈</div>
+      <div class="kpi-val">{{ total_litros | round(1) }}</div>
+      <div class="kpi-label">Litros históricos</div>
+      <div class="kpi-sub">Total en BD</div>
+    </div>
+    <div class="iot-kpi" style="--kpi-color: #14b8a6">
+      <div class="kpi-icon">🧮</div>
+      <div class="kpi-val">{{ total_m3 | round(4) }}</div>
+      <div class="kpi-label">m³ históricos</div>
+      <div class="kpi-sub">Total en BD</div>
+    </div>
+  </div>
+
+  <!-- GRID PRINCIPAL -->
+  <div class="iot-grid">
+
+    <!-- TIEMPO REAL -->
+    <div class="iot-card">
+      <h3>⚡ Datos en tiempo real</h3>
+      {% if esp32_online %}
+        <div class="tr-grid">
+          <div class="tr-item">
+            <div class="tr-label">Litros período</div>
+            <div class="tr-val">{{ esp32_data.litros_periodo | default(0) | round(2) }}</div>
+            <div class="tr-unit">Litros</div>
+          </div>
+          <div class="tr-item">
+            <div class="tr-label">m³ período</div>
+            <div class="tr-val">{{ esp32_data.m3_periodo | default(0) | round(5) }}</div>
+            <div class="tr-unit">m³</div>
+          </div>
+          <div class="tr-item">
+            <div class="tr-label">Uptime</div>
+            <div class="tr-val">{{ esp32_data.uptime_min | default(0) }}</div>
+            <div class="tr-unit">Minutos encendido</div>
+          </div>
+          <div class="tr-item">
+            <div class="tr-label">Envíos al servidor</div>
+            <div class="tr-val">{{ esp32_data.total_envios | default(0) }}</div>
+            <div class="tr-unit">Total enviados</div>
+          </div>
+        </div>
+        <div style="margin-top:16px">
+          <div class="flujo-badge {{ 'activo' if esp32_data.flujo_activo else 'detenido' }}">
+            {{ '● FLUJO ACTIVO' if esp32_data.flujo_activo else '● FLUJO DETENIDO' }}
+          </div>
+        </div>
+      {% else %}
+        <div style="text-align:center; padding:40px; color:#64748b;">
+          <div style="font-size:48px">📡</div>
+          <div style="margin-top:8px">ESP32 no disponible</div>
+          <div style="font-size:12px; margin-top:4px">Verifica que el dispositivo esté encendido y conectado al WiFi</div>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- DISPOSITIVO -->
+    <div class="iot-card">
+      <h3>🔧 Info del dispositivo</h3>
+      <div class="device-rows">
+        <div class="device-row">
+          <span class="dr-label">Medidor</span>
+          <span class="dr-val">12345</span>
+        </div>
+        <div class="device-row">
+          <span class="dr-label">IP del ESP32</span>
+          <span class="dr-val">{{ esp32_data.ip | default('192.168.18.51') }}</span>
+        </div>
+        <div class="device-row">
+          <span class="dr-label">Estado</span>
+          <span class="dr-val" style="color: {{ '#10b981' if esp32_online else '#ef4444' }}">
+            {{ '✓ En línea' if esp32_online else '✗ Desconectado' }}
+          </span>
+        </div>
+        <div class="device-row">
+          <span class="dr-label">Última lectura</span>
+          <span class="dr-val">{{ esp32_data.ultima_hora | default('--') }}</span>
+        </div>
+        <div class="device-row">
+          <span class="dr-label">Sensor</span>
+          <span class="dr-val">YF-S201 — GPIO4</span>
+        </div>
+        <div class="device-row">
+          <span class="dr-label">Calibración</span>
+          <span class="dr-val">7.5 pulsos/L</span>
+        </div>
+        <div class="device-row">
+          <span class="dr-label">Intervalo envío</span>
+          <span class="dr-val">5 minutos</span>
+        </div>
+        <div class="device-row">
+          <span class="dr-label">Lecturas en BD</span>
+          <span class="dr-val">{{ lecturas | length }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- GRÁFICA -->
+  <div class="iot-card" style="margin-bottom:24px">
+    <h3>📈 Consumo histórico por día</h3>
+    {% if datos_grafica %}
+      <div class="chart-wrap">
+        <canvas id="chartConsumo"></canvas>
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:40px; color:#64748b;">
+        <div style="font-size:40px">📊</div>
+        <div>No hay datos históricos aún</div>
+      </div>
+    {% endif %}
+  </div>
+
+  <!-- HISTORIAL -->
+  <div class="iot-card">
+    <h3>🕐 Historial de lecturas IoT</h3>
+    {% if lecturas %}
+      <div style="overflow-x:auto">
+        <table class="iot-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Fecha</th>
+              <th>Hora</th>
+              <th>Litros</th>
+              <th>m³</th>
+              <th>Detalle</th>
+              <th>Fuente</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for l in lecturas %}
+            <tr>
+              <td>{{ l.id }}</td>
+              <td>{{ l.fecha_lectura }}</td>
+              <td>{{ l.hora_lectura }}</td>
+              <td><strong>{{ ((l.consumo_calculado or 0) * 1000) | round(2) }}</strong> L</td>
+              <td>{{ (l.consumo_calculado or 0) | round(5) }} m³</td>
+              <td style="font-size:11px; color:#64748b; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                {{ l.observacion or '-' }}
+              </td>
+              <td><span class="badge-iot">IoT ESP32</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div style="text-align:center; padding:30px; color:#64748b;">
+        No hay lecturas IoT registradas aún.
+      </div>
+    {% endif %}
+  </div>
+
+</div>
+
+<!-- CHART.JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+  const datos = {{ datos_grafica | tojson }};
+  if (datos.length > 0) {
+    const ctx = document.getElementById('chartConsumo').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: datos.map(d => d.fecha),
+        datasets: [
+          {
+            label: 'Litros',
+            data: datos.map(d => d.litros),
+            backgroundColor: 'rgba(14,165,233,.6)',
+            borderColor: '#0ea5e9',
+            borderWidth: 2,
+            borderRadius: 6,
+            yAxisID: 'y',
+          },
+          {
+            label: 'm³',
+            data: datos.map(d => d.m3),
+            type: 'line',
+            borderColor: '#10b981',
+            backgroundColor: 'rgba(16,185,129,.1)',
+            borderWidth: 2,
+            pointRadius: 4,
+            pointBackgroundColor: '#10b981',
+            tension: 0.4,
+            fill: true,
+            yAxisID: 'y1',
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            labels: { color: '#94a3b8', font: { size: 12 } }
+          },
+          tooltip: {
+            backgroundColor: '#1e293b',
+            titleColor: '#e2e8f0',
+            bodyColor: '#94a3b8',
+            borderColor: '#334155',
+            borderWidth: 1,
+          }
+        },
+        scales: {
+          x: {
+            ticks: { color: '#64748b' },
+            grid:  { color: 'rgba(51,65,85,.5)' }
+          },
+          y: {
+            position: 'left',
+            ticks: { color: '#0ea5e9' },
+            grid:  { color: 'rgba(51,65,85,.3)' },
+            title: { display: true, text: 'Litros', color: '#0ea5e9' }
+          },
+          y1: {
+            position: 'right',
+            ticks: { color: '#10b981' },
+            grid:  { display: false },
+            title: { display: true, text: 'm³', color: '#10b981' }
+          }
+        }
+      }
+    });
+  }
+
+  // Auto-refresh cada 30 segundos
+  setTimeout(() => location.reload(), 30000);
+</script>
+{% endblock %}

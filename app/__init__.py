@@ -37,7 +37,9 @@ def create_app() -> Flask:
     from app.routes.aportes import aportes_bp
     from app.routes.dashboard import dashboard_bp
     from app.routes.planillas import planillas_bp
+    from app.routes.ordenes import ordenes_bp
     from app.routes.comunicaciones import comunicaciones_bp
+    from app.routes.iot import iot_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api')
@@ -47,7 +49,9 @@ def create_app() -> Flask:
     app.register_blueprint(incidencias_bp, url_prefix='/api/incidencias')
     app.register_blueprint(aportes_bp, url_prefix='/api/aportes')
     app.register_blueprint(planillas_bp, url_prefix='/api/planillas')
+    app.register_blueprint(ordenes_bp, url_prefix='/api/ordenes')
     app.register_blueprint(comunicaciones_bp, url_prefix='/api')
+    app.register_blueprint(iot_bp, url_prefix='/api/iot')
     app.register_blueprint(dashboard_bp)
 
     @app.route('/api/health')
@@ -154,12 +158,14 @@ def seed_base_data() -> None:
         tecnico_socio = Socio(usuario_id=tecnico.id, junta_id=junta.id, codigo_socio='SOC-TEC-001', numero_medidor='MED-TEC-001', estado_servicio='ACTIVO', fecha_ingreso=now_date_str(), observacion='Perfil técnico con datos de socio para consumo propio')
         db.session.add(tecnico_socio)
         db.session.commit()
+
     tecnico_vivienda = Vivienda.query.filter_by(socio_id=tecnico_socio.id).first()
     if not tecnico_vivienda:
         sector = Sector.query.first()
         tecnico_vivienda = Vivienda(socio_id=tecnico_socio.id, sector_id=sector.id, codigo_vivienda='VIV-TEC-001', direccion='Vivienda del técnico', referencia='Casa del técnico', latitud=-4.001, longitud=-79.201, tipo_vivienda='CASA')
         db.session.add(tecnico_vivienda)
         db.session.commit()
+
     tecnico_medidor = Medidor.query.filter_by(numero_medidor='MED-TEC-001').first()
     if not tecnico_medidor:
         tecnico_medidor = Medidor(socio_id=tecnico_socio.id, vivienda_id=tecnico_vivienda.id, numero_medidor='MED-TEC-001', marca='Genérico', modelo='2026', estado='ACTIVO', fecha_instalacion=now_date_str())
@@ -202,9 +208,3 @@ def seed_base_data() -> None:
         admin = Usuario.query.filter_by(username='admin').first()
         db.session.add(OrdenTrabajo(tecnico_id=tecnico.id, creado_por=admin.id, titulo='Inspección de red', descripcion='Revisar posibles fugas en el sector Centro.', estado='ASIGNADA', prioridad='MEDIA', fecha=now_date_str(), hora=now_time_str(), latitud=vivienda.latitud, longitud=vivienda.longitud))
         db.session.commit()
-
-
-from app.models import Notificacion, Mensaje, OrdenTrabajo
-
-def _seed_extra():
-    pass

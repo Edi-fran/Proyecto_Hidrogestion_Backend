@@ -1,1 +1,434 @@
-<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Planilla {{ planilla.numero_planilla }}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"><link href="{{ url_for('dashboard.static', filename='css/style.css') }}" rel="stylesheet"></head><body onload="window.print()"><div class="print-wrap"><h2>Planilla / Comprobante de agua potable</h2><p><strong>Número:</strong> {{ planilla.numero_planilla }}</p><p><strong>Socio:</strong> {{ planilla.socio.usuario.nombre_completo if planilla.socio and planilla.socio.usuario else '-' }}</p><p><strong>Medidor:</strong> {{ planilla.socio.medidores[0].numero_medidor if planilla.socio and planilla.socio.medidores else '-' }}</p><p><strong>Dirección:</strong> {{ planilla.vivienda.direccion if planilla.vivienda else '-' }}</p><hr><table class="table table-bordered"><tr><th>Lectura anterior</th><td>{{ planilla.lectura_anterior }}</td></tr><tr><th>Lectura actual</th><td>{{ planilla.lectura_actual }}</td></tr><tr><th>Consumo</th><td>{{ planilla.consumo_m3 }} m³</td></tr><tr><th>Cargo fijo</th><td>${{ '%.2f'|format(planilla.cargo_fijo or 0) }}</td></tr><tr><th>Valor m³</th><td>${{ '%.2f'|format(planilla.valor_m3 or 0) }}</td></tr><tr><th>Total</th><td><strong>${{ '%.2f'|format(planilla.total_pagar or 0) }}</strong></td></tr><tr><th>Estado</th><td>{{ planilla.estado }}</td></tr><tr><th>Fecha pago</th><td>{{ planilla.fecha_pago or '-' }} {{ planilla.hora_pago or '' }}</td></tr></table><p class="mt-4">Este documento puede imprimirse como respaldo de planilla o comprobante una vez cancelado.</p></div></body></html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Planilla {{ planilla.numero_planilla }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #111;
+            background: #fff;
+        }
+
+        .page {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 0 auto;
+            padding: 10mm 12mm;
+        }
+
+        /* ── ENCABEZADO ── */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 3px solid #1a5fa8;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-box {
+            width: 55px;
+            height: 55px;
+            background: #1a5fa8;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .org-name {
+            font-size: 18px;
+            font-weight: bold;
+            color: #1a5fa8;
+            line-height: 1.2;
+        }
+
+        .org-subtitle {
+            font-size: 10px;
+            color: #555;
+        }
+
+        .header-right {
+            text-align: right;
+        }
+
+        .planilla-num {
+            font-size: 15px;
+            font-weight: bold;
+            color: #1a5fa8;
+        }
+
+        .badge-estado {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-size: 10px;
+            font-weight: bold;
+            margin-top: 4px;
+        }
+
+        .badge-PENDIENTE { background: #fff3cd; color: #856404; border: 1px solid #ffc107; }
+        .badge-PAGADO    { background: #d1e7dd; color: #0f5132; border: 1px solid #198754; }
+        .badge-VENCIDO   { background: #f8d7da; color: #842029; border: 1px solid #dc3545; }
+
+        /* ── SECCIONES ── */
+        .section {
+            margin-bottom: 8px;
+        }
+
+        .section-title {
+            background: #1a5fa8;
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            padding: 3px 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 4px;
+        }
+
+        /* ── GRID DE DATOS ── */
+        .data-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px 16px;
+            padding: 4px 6px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+        }
+
+        .data-grid-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .data-item label {
+            font-size: 9px;
+            color: #666;
+            text-transform: uppercase;
+            display: block;
+        }
+
+        .data-item span {
+            font-size: 11px;
+            font-weight: bold;
+            color: #111;
+        }
+
+        /* ── TABLA CONSUMO ── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 11px;
+        }
+
+        table thead tr {
+            background: #e8f0fb;
+        }
+
+        table th {
+            padding: 5px 8px;
+            text-align: left;
+            font-size: 10px;
+            color: #333;
+            border: 1px solid #dee2e6;
+        }
+
+        table td {
+            padding: 5px 8px;
+            border: 1px solid #dee2e6;
+        }
+
+        table td.right, table th.right {
+            text-align: right;
+        }
+
+        table tr.subtotal td {
+            background: #f8f9fa;
+            font-weight: bold;
+        }
+
+        table tr.total td {
+            background: #1a5fa8;
+            color: white;
+            font-weight: bold;
+            font-size: 13px;
+        }
+
+        /* ── HISTORIAL BARRAS ── */
+        .bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 6px;
+            height: 50px;
+            padding: 0 6px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            background: #fafafa;
+        }
+
+        .bar-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+
+        .bar-fill {
+            width: 100%;
+            background: #1a5fa8;
+            border-radius: 3px 3px 0 0;
+            min-height: 4px;
+        }
+
+        .bar-label {
+            font-size: 8px;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        /* ── PAGO INFO ── */
+        .pago-box {
+            border: 2px solid #1a5fa8;
+            border-radius: 6px;
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f0f6ff;
+        }
+
+        .pago-label {
+            font-size: 11px;
+            color: #555;
+        }
+
+        .pago-amount {
+            font-size: 28px;
+            font-weight: bold;
+            color: #1a5fa8;
+        }
+
+        .pago-dates {
+            text-align: right;
+            font-size: 10px;
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            margin-top: 10px;
+            border-top: 1px solid #dee2e6;
+            padding-top: 6px;
+            display: flex;
+            justify-content: space-between;
+            font-size: 9px;
+            color: #888;
+        }
+
+        .print-btn {
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            background: #1a5fa8;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            z-index: 999;
+        }
+
+        @media print {
+            .print-btn { display: none; }
+            .page { padding: 8mm 10mm; }
+            body { font-size: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+<button class="print-btn" onclick="window.print()">🖨️ Imprimir</button>
+
+<div class="page">
+
+    <!-- ENCABEZADO -->
+    <div class="header">
+        <div class="header-left">
+            <div class="logo-box">HG</div>
+            <div>
+                <div class="org-name">HidroGestión</div>
+                <div class="org-subtitle">Sistema Comunitario de Agua Potable</div>
+                <div class="org-subtitle">Tel: — &nbsp;|&nbsp; hidrogestion@sistema.ec</div>
+            </div>
+        </div>
+        <div class="header-right">
+            <div class="planilla-num">{{ planilla.numero_planilla }}</div>
+            <div>Período: {{ planilla.periodo_mes }}/{{ planilla.periodo_anio }}</div>
+            <div class="badge-estado badge-{{ planilla.estado }}">{{ planilla.estado }}</div>
+        </div>
+    </div>
+
+    <!-- DATOS DEL SOCIO -->
+    <div class="section">
+        <div class="section-title">Datos del Socio</div>
+        <div class="data-grid data-grid-3">
+            <div class="data-item">
+                <label>Nombre completo</label>
+                <span>{{ planilla.socio.usuario.nombre_completo if planilla.socio and planilla.socio.usuario else '-' }}</span>
+            </div>
+            <div class="data-item">
+                <label>Cédula</label>
+                <span>{{ planilla.socio.usuario.cedula if planilla.socio and planilla.socio.usuario else '-' }}</span>
+            </div>
+            <div class="data-item">
+                <label>Código de socio</label>
+                <span>{{ planilla.socio.codigo_socio if planilla.socio else '-' }}</span>
+            </div>
+            <div class="data-item">
+                <label>Número de medidor</label>
+                <span>
+                    {% if planilla.lectura and planilla.lectura.medidor %}
+                        {{ planilla.lectura.medidor.numero_medidor }}
+                    {% elif planilla.socio %}
+                        {{ planilla.socio.numero_medidor or '-' }}
+                    {% else %}-{% endif %}
+                </span>
+            </div>
+            <div class="data-item">
+                <label>Dirección</label>
+                <span>{{ planilla.vivienda.direccion if planilla.vivienda else '-' }}</span>
+            </div>
+            <div class="data-item">
+                <label>Teléfono</label>
+                <span>{{ planilla.socio.usuario.telefono if planilla.socio and planilla.socio.usuario else '-' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DATOS DE LECTURA -->
+    <div class="section">
+        <div class="section-title">Lectura del Período</div>
+        <div class="data-grid data-grid-3">
+            <div class="data-item">
+                <label>Lectura anterior (m³)</label>
+                <span>{{ '%.2f'|format(planilla.lectura_anterior or 0) }}</span>
+            </div>
+            <div class="data-item">
+                <label>Lectura actual (m³)</label>
+                <span>{{ '%.2f'|format(planilla.lectura_actual or 0) }}</span>
+            </div>
+            <div class="data-item">
+                <label>Consumo del período (m³)</label>
+                <span style="color:#1a5fa8; font-size:14px;">{{ '%.2f'|format(planilla.consumo_m3 or 0) }} m³</span>
+            </div>
+            <div class="data-item">
+                <label>Fecha de lectura</label>
+                <span>{{ planilla.lectura.fecha_lectura if planilla.lectura else '-' }}</span>
+            </div>
+            <div class="data-item">
+                <label>Fecha de emisión</label>
+                <span>{{ planilla.fecha_emision or '-' }}</span>
+            </div>
+            <div class="data-item">
+                <label>Fecha de vencimiento</label>
+                <span>{{ planilla.fecha_vencimiento or 'Por definir' }}</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DETALLE DE VALORES -->
+    <div class="section">
+        <div class="section-title">Detalle de Valores a Pagar</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Descripción</th>
+                    <th class="right">Valor</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Cargo fijo mensual</td>
+                    <td class="right">${{ '%.2f'|format(planilla.cargo_fijo or 0) }}</td>
+                </tr>
+                <tr>
+                    <td>Consumo {{ '%.2f'|format(planilla.consumo_m3 or 0) }} m³ × ${{ '%.2f'|format(planilla.valor_m3 or 0) }}/m³</td>
+                    <td class="right">${{ '%.2f'|format(planilla.subtotal_consumo or 0) }}</td>
+                </tr>
+                {% if planilla.recargo and planilla.recargo > 0 %}
+                <tr>
+                    <td>Recargo</td>
+                    <td class="right">${{ '%.2f'|format(planilla.recargo) }}</td>
+                </tr>
+                {% endif %}
+                {% if planilla.multa and planilla.multa > 0 %}
+                <tr>
+                    <td>Multa por atraso</td>
+                    <td class="right" style="color:red;">${{ '%.2f'|format(planilla.multa) }}</td>
+                </tr>
+                {% endif %}
+                {% if planilla.otros and planilla.otros > 0 %}
+                <tr>
+                    <td>Otros cargos</td>
+                    <td class="right">${{ '%.2f'|format(planilla.otros) }}</td>
+                </tr>
+                {% endif %}
+                <tr class="total">
+                    <td>TOTAL A PAGAR</td>
+                    <td class="right">${{ '%.2f'|format(planilla.total_pagar or 0) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- CAJA DE PAGO -->
+    <div class="section">
+        <div class="pago-box">
+            <div>
+                <div class="pago-label">💧 Valor total a cancelar</div>
+                <div class="pago-amount">${{ '%.2f'|format(planilla.total_pagar or 0) }}</div>
+                <div style="font-size:9px; color:#888; margin-top:4px;">
+                    Período {{ planilla.periodo_mes }}/{{ planilla.periodo_anio }}
+                </div>
+            </div>
+            <div class="pago-dates">
+                {% if planilla.estado == 'PAGADO' %}
+                    <div style="color:green; font-weight:bold; font-size:14px;">✔ PAGADO</div>
+                    <div>Fecha: {{ planilla.fecha_pago or '-' }}</div>
+                    <div>Método: {{ planilla.metodo_pago or '-' }}</div>
+                    {% if planilla.referencia_pago %}
+                    <div>Ref: {{ planilla.referencia_pago }}</div>
+                    {% endif %}
+                {% else %}
+                    <div style="color:#856404; font-weight:bold;">⚠ PENDIENTE DE PAGO</div>
+                    <div>Vence: {{ planilla.fecha_vencimiento or 'Por definir' }}</div>
+                    <div style="color:#666; font-size:9px; margin-top:4px;">
+                        Acérquese a la oficina de la junta<br>para realizar su pago.
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer">
+        <div>HidroGestión — Sistema Comunitario de Agua Potable</div>
+        <div>Planilla: {{ planilla.numero_planilla }} &nbsp;|&nbsp; Generado: {{ planilla.fecha_emision }}</div>
+    </div>
+
+</div>
+</body>
+</html>

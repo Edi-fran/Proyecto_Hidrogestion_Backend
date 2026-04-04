@@ -1,6 +1,186 @@
-{% extends "dashboard/base.html" %}
+{% extends 'dashboard/base.html' %}
 {% block page_title %}Pagos{% endblock %}
+
 {% block content %}
-<div class="page-header"><h2>Pagos registrados</h2></div>
-<div class="table-card"><table class="table"><thead><tr><th>ID</th><th>Planilla</th><th>Socio</th><th>Valor</th><th>Fecha</th><th>Hora</th><th>Método</th><th>Referencia</th><th>Registrado por</th></tr></thead><tbody>{% for p in pagos %}<tr><td>{{ p.id }}</td><td>{{ p.planilla.numero_planilla if p.planilla else p.planilla_id }}</td><td>{{ p.socio.usuario.nombre_completo if p.socio and p.socio.usuario else p.socio_id }}</td><td>${{ '%.2f'|format(p.valor_pagado or 0) }}</td><td>{{ p.fecha_pago }}</td><td>{{ p.hora_pago }}</td><td>{{ p.metodo_pago or '' }}</td><td>{{ p.referencia_pago or '' }}</td><td>{{ p.usuario.nombre_completo if p.usuario else '' }}</td></tr>{% else %}<tr><td colspan="9">No hay pagos registrados.</td></tr>{% endfor %}</tbody></table></div>
+
+{% set total_pagos = pagos|length %}
+{% set total_valor = pagos|sum(attribute='valor_pagado') %}
+{% set efectivo = pagos|selectattr('metodo_pago','eq','EFECTIVO')|list|length %}
+{% set transferencia = pagos|selectattr('metodo_pago','eq','TRANSFERENCIA')|list|length %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left:4px solid #1a5fa8;">
+            <div class="metric-card__label">Total pagos</div>
+            <div class="metric-card__value">{{ total_pagos }}</div>
+            <div class="metric-card__hint">transacciones</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left:4px solid #16a34a;">
+            <div class="metric-card__label">Total recaudado</div>
+            <div class="metric-card__value" style="color:#16a34a; font-size:1.6rem;">
+                ${{ '%.2f'|format(total_valor) }}
+            </div>
+            <div class="metric-card__hint">acumulado</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left:4px solid #f59e0b;">
+            <div class="metric-card__label">En efectivo</div>
+            <div class="metric-card__value" style="color:#f59e0b;">{{ efectivo }}</div>
+            <div class="metric-card__hint">pagos en efectivo</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="metric-card" style="border-left:4px solid #6366f1;">
+            <div class="metric-card__label">Transferencias</div>
+            <div class="metric-card__value" style="color:#6366f1;">{{ transferencia }}</div>
+            <div class="metric-card__hint">pagos digitales</div>
+        </div>
+    </div>
+</div>
+
+<!-- TABLA -->
+<div class="panel-card">
+    <div class="panel-card__header">
+        <h3 class="panel-card__title">
+            <i class="bi bi-receipt-cutoff me-2" style="color:#16a34a;"></i>
+            Pagos registrados
+        </h3>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">
+            <i class="bi bi-arrow-clockwise"></i> Refrescar
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-modern align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Planilla</th>
+                    <th>Socio</th>
+                    <th>Valor pagado</th>
+                    <th>Fecha / Hora</th>
+                    <th>Método</th>
+                    <th>Referencia</th>
+                    <th>Registrado por</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pagos %}
+                <tr>
+                    <td>
+                        <span style="font-weight:700;color:#1a5fa8;">#{{ p.id }}</span>
+                    </td>
+
+                    <td>
+                        <span style="font-family:monospace;font-size:.82rem;background:#f1f5f9;padding:3px 8px;border-radius:6px;color:#334155;">
+                            {{ p.planilla.numero_planilla if p.planilla else '#' ~ p.planilla_id }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <div style="
+                                width:32px;height:32px;border-radius:50%;
+                                background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+                                display:grid;place-items:center;
+                                color:white;font-weight:700;font-size:.78rem;
+                                flex-shrink:0;
+                            ">
+                                {{ ((p.socio.usuario.nombres[:1] if p.socio and p.socio.usuario and p.socio.usuario.nombres else '?')).upper() }}
+                            </div>
+                            <div>
+                                <div style="font-weight:600;font-size:.85rem;color:#0f172a;">
+                                    {{ p.socio.usuario.nombre_completo if p.socio and p.socio.usuario else '#' ~ p.socio_id }}
+                                </div>
+                                {% if p.socio and p.socio.usuario %}
+                                <div style="font-size:.72rem;color:#94a3b8;">
+                                    {{ p.socio.usuario.cedula or '' }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        <span style="font-size:1.05rem;font-weight:800;color:#16a34a;">
+                            ${{ '%.2f'|format(p.valor_pagado or 0) }}
+                        </span>
+                    </td>
+
+                    <td>
+                        <div style="font-weight:600;font-size:.85rem;color:#0f172a;">
+                            <i class="bi bi-calendar3" style="color:#94a3b8;"></i>
+                            {{ p.fecha_pago or '-' }}
+                        </div>
+                        <div style="font-size:.75rem;color:#94a3b8;">
+                            <i class="bi bi-clock"></i> {{ p.hora_pago or '-' }}
+                        </div>
+                    </td>
+
+                    <td>
+                        {% if p.metodo_pago == 'EFECTIVO' %}
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;font-size:.78rem;font-weight:700;background:#fff3cd;color:#856404;">
+                            <i class="bi bi-cash"></i> EFECTIVO
+                        </span>
+                        {% elif p.metodo_pago == 'TRANSFERENCIA' %}
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;font-size:.78rem;font-weight:700;background:#e0e7ff;color:#3730a3;">
+                            <i class="bi bi-phone"></i> TRANSFERENCIA
+                        </span>
+                        {% elif p.metodo_pago %}
+                        <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:8px;font-size:.78rem;font-weight:600;background:#f1f5f9;color:#475569;">
+                            {{ p.metodo_pago }}
+                        </span>
+                        {% else %}
+                        <span style="color:#94a3b8;font-size:.78rem;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if p.referencia_pago %}
+                        <span style="font-family:monospace;font-size:.78rem;background:#f1f5f9;padding:2px 6px;border-radius:4px;">
+                            {{ p.referencia_pago }}
+                        </span>
+                        {% else %}
+                        <span style="color:#94a3b8;font-size:.78rem;">—</span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        <div style="font-size:.82rem;color:#334155;">
+                            {{ p.usuario.nombre_completo if p.usuario else '—' }}
+                        </div>
+                    </td>
+                </tr>
+
+                {% else %}
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <i class="bi bi-receipt" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
+                        No hay pagos registrados.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+
+            {% if pagos %}
+            <tfoot>
+                <tr style="background:#f0fdf4;border-top:2px solid #16a34a;">
+                    <td colspan="3" style="font-weight:700;font-size:.95rem;padding:.9rem .75rem;color:#0f172a;">
+                        <i class="bi bi-calculator me-1"></i> TOTAL RECAUDADO
+                    </td>
+                    <td style="font-weight:800;font-size:1.1rem;color:#16a34a;padding:.9rem .75rem;">
+                        ${{ '%.2f'|format(total_valor) }}
+                    </td>
+                    <td colspan="4"></td>
+                </tr>
+            </tfoot>
+            {% endif %}
+        </table>
+    </div>
+</div>
+
 {% endblock %}

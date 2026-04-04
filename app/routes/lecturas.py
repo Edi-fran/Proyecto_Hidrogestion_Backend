@@ -80,17 +80,17 @@ def _calcular_cobro(consumo, socio_id, vivienda_id):
             'base_consumo_m3': float(asignada.base_consumo_m3 or 0),
             'nombre': asignada.nombre,
         }
-    cobro = _calcular_cobro(consumo, socio.id, vivienda.id)
-    subtotal = cobro['subtotal']
-    total = subtotal + cobro.get('multa', 0) + cobro.get('otros', 0)
+    tarifa = _active_tarifa()
+    excedente = max(0, consumo - 10)
+    subtotal = float(tarifa.cargo_fijo if tarifa else 2.0) + (excedente * float(tarifa.valor_m3 if tarifa else 0.5))
     return {
         'tarifa_id': tarifa.id if tarifa else None,
-        'cargo_fijo': tarifa.cargo_fijo if tarifa else 0,
-        'valor_m3': tarifa.valor_m3 if tarifa else 0,
-        'subtotal': total,
+        'cargo_fijo': float(tarifa.cargo_fijo if tarifa else 2.0),
+        'valor_m3': float(tarifa.valor_m3 if tarifa else 0.5),
+        'subtotal': subtotal,
         'multa': 0.0,
         'otros': 0.0,
-        'base_consumo_m3': 0.0,
+        'base_consumo_m3': 10.0,
         'nombre': tarifa.nombre if tarifa else 'Tarifa general',
     }
 
@@ -140,7 +140,7 @@ def create_lectura():
     total = subtotal + cobro.get('multa', 0) + cobro.get('otros', 0)
     anio = int(datetime.now().strftime('%Y'))
     mes = int(datetime.now().strftime('%m'))
-    consumo_row = Consumo(lectura_id=lectura.id, vivienda_id=vivienda.id, socio_id=socio.id, periodo_anio=anio, periodo_mes=mes, lectura_inicial=lectura_anterior, lectura_final=lectura_actual, consumo_m3=consumo, tarifa_id=cobro['tarifa_id'], cargo_fijo=cobro['cargo_fijo'], valor_m3=cobro['valor_m3'], subtotal_consumo=subtotal, multa=cobro.get('multa',0), total_pagar=total, indicador=_indicator(consumo), observacion=f"Generado automáticamente desde lectura. {cobro['nombre']}")
+    consumo_row = Consumo(lectura_id=lectura.id, vivienda_id=vivienda.id, socio_id=socio.id, periodo_anio=anio, periodo_mes=mes, lectura_inicial=lectura_anterior, lectura_final=lectura_actual, consumo_m3=consumo, tarifa_id=cobro['tarifa_id'], cargo_fijo=cobro['cargo_fijo'], valor_m3=cobro['valor_m3'], subtotal_consumo=subtotal, multa=cobro.get('multa', 0), total_pagar=total, indicador=_indicator(consumo), observacion=f"Generado automáticamente desde lectura. {cobro['nombre']}")
     db.session.add(consumo_row)
     db.session.commit()
     numero = f'PLN-{anio}{mes:02d}-{vivienda.id:04d}'
@@ -178,7 +178,7 @@ def list_lecturas():
     if user.rol.nombre == 'SOCIO' and user.socio:
         q = q.filter_by(socio_id=user.socio.id)
     lecturas = q.all()
-    return jsonify([{'id': l.id, 'socio': l.socio.usuario.nombre_completo if l.socio and l.socio.usuario else None, 'cedula': l.socio.usuario.cedula if l.socio and l.socio.usuario else None, 'medidor': l.medidor.numero_medidor if l.medidor else None, 'direccion': l.vivienda.direccion if l.vivienda else None, 'lectura_anterior': l.lectura_anterior, 'lectura_actual': l.lectura_actual, 'consumo_calculado': l.consumo_calculado, 'indicador': l.consumo.indicador if l.consumo else None, 'fecha_lectura': l.fecha_lectura, 'hora_lectura': l.hora_lectura, 'latitud': l.latitud, 'longitud': l.longitud, 'estado': l.estado, 'evidencias': [e.ruta_imagen for e in l.evidencias]} for l in lecturas])
+    return jsonify([{'id': l.id, 'socio': l.socio.usuario.nombre_completo if l.socio and l.socio.usuario else None, 'cedula': l.socio.usuario.cedula if l.socio and l.socio.usuario else None, 'medidor': l.medidor.numero_medidor if l.medidor else None, 'direccion': l.vivienda.direccion if l.vivienda else None, 'lectura_anterior': l.lectura_anterior, 'lectura_actual': l.lectura_actual, 'consumo_calculado': l.consumo_calculado, 'indicador': l.consumo.indicador if l.consumo else None, 'fecha_lectura': l.fecha_lectura, 'hora_lectura': l.hora_lectura, 'latitud': l.latitud, 'longitud': l.longitud, 'estado': l.estado, 'observacion': l.observacion, 'evidencias': [e.ruta_imagen for e in l.evidencias]} for l in lecturas])
 
 
 @lecturas_bp.get('/reporte.csv')
@@ -187,6 +187,7 @@ def list_lecturas():
 def export_lecturas_csv():
     lecturas = Lectura.query.order_by(Lectura.id.desc()).all()
     path = Path('instance/reportes/lecturas.csv')
+    path.parent.mkdir(parents=True, exist_ok=True)
     export_csv(path, ['ID', 'Cedula', 'Socio', 'Medidor', 'Direccion', 'Anterior', 'Actual', 'Consumo', 'Fecha', 'Hora', 'Latitud', 'Longitud'], [[l.id, l.socio.usuario.cedula if l.socio and l.socio.usuario else '', l.socio.usuario.nombre_completo if l.socio and l.socio.usuario else '', l.medidor.numero_medidor if l.medidor else '', l.vivienda.direccion if l.vivienda else '', l.lectura_anterior, l.lectura_actual, l.consumo_calculado, l.fecha_lectura, l.hora_lectura, l.latitud, l.longitud] for l in lecturas])
     return send_file(path, as_attachment=True, download_name='lecturas.csv')
 
@@ -250,7 +251,7 @@ def reclamar_lectura(lectura_id):
     for admin in admins:
         create_notification(admin.id, 'Reclamo de lectura', f'Se reportó un reclamo para la lectura {lectura.id}. Motivo: {motivo}', 'LECTURA', 'lecturas', lectura.id)
     db.session.commit()
-    return jsonify({'mensaje':'Reclamo registrado correctamente.', 'reclamo_id': reclamo.id})
+    return jsonify({'mensaje': 'Reclamo registrado correctamente.', 'reclamo_id': reclamo.id})
 
 
 @lecturas_bp.post('/<int:lectura_id>/anular-recalcular')
@@ -282,10 +283,10 @@ def anular_recalcular_lectura(lectura_id):
         db.session.flush()
         cobro = _calcular_cobro(consumo, socio.id, vivienda.id)
         subtotal = cobro['subtotal']
-        total = subtotal + cobro.get('multa',0) + cobro.get('otros',0)
+        total = subtotal + cobro.get('multa', 0) + cobro.get('otros', 0)
         anio = int(datetime.now().strftime('%Y'))
         mes = int(datetime.now().strftime('%m'))
-        consumo_row = Consumo(lectura_id=nueva.id, vivienda_id=vivienda.id, socio_id=socio.id, periodo_anio=anio, periodo_mes=mes, lectura_inicial=lectura_anterior, lectura_final=corrected, consumo_m3=consumo, tarifa_id=cobro['tarifa_id'], cargo_fijo=cobro['cargo_fijo'], valor_m3=cobro['valor_m3'], subtotal_consumo=subtotal, multa=cobro.get('multa',0), total_pagar=total, indicador=_indicator(consumo), observacion=f'Generado por recálculo de lectura {lectura.id}')
+        consumo_row = Consumo(lectura_id=nueva.id, vivienda_id=vivienda.id, socio_id=socio.id, periodo_anio=anio, periodo_mes=mes, lectura_inicial=lectura_anterior, lectura_final=corrected, consumo_m3=consumo, tarifa_id=cobro['tarifa_id'], cargo_fijo=cobro['cargo_fijo'], valor_m3=cobro['valor_m3'], subtotal_consumo=subtotal, multa=cobro.get('multa', 0), total_pagar=total, indicador=_indicator(consumo), observacion=f'Generado por recálculo de lectura {lectura.id}')
         db.session.add(consumo_row)
         db.session.flush()
         numero = f'PLN-{anio}{mes:02d}-{vivienda.id:04d}-R{nueva.id}'
@@ -294,7 +295,7 @@ def anular_recalcular_lectura(lectura_id):
         nueva_id = nueva.id
         create_notification(socio.usuario_id, 'Lectura corregida', f'Se corrigió la lectura anterior y se regeneró la planilla {numero}.', 'LECTURA', 'lecturas', nueva.id)
     db.session.commit()
-    return jsonify({'mensaje':'Lectura anulada y recalculada correctamente.' if nueva_id else 'Lectura anulada correctamente.', 'nueva_lectura_id': nueva_id})
+    return jsonify({'mensaje': 'Lectura anulada y recalculada correctamente.' if nueva_id else 'Lectura anulada correctamente.', 'nueva_lectura_id': nueva_id})
 
 
 @lecturas_bp.get('/reclamos')

@@ -1,1 +1,178 @@
-{% extends 'dashboard/base.html' %}{% block page_title %}Sesiones y tokens{% endblock %}{% block content %}<div class="panel-card"><div class="panel-card__header"><h3 class="panel-card__title">Sesiones activas / históricas</h3><a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">Refrescar</a></div><div class="table-responsive"><table class="table table-modern"><thead><tr><th>ID</th><th>Usuario</th><th>JTI</th><th>IP</th><th>Dispositivo</th><th>Expira</th><th>Revocado</th><th>Acciones</th></tr></thead><tbody>{% for s in sesiones %}<tr><td>#{{ s.id }}</td><td>{{ s.usuario.nombre_completo if s.usuario else '-' }}</td><td style="max-width:220px;word-break:break-all">{{ s.jti }}</td><td>{{ s.ip }}</td><td>{{ s.dispositivo or '-' }}</td><td>{{ s.fecha_expiracion }}</td><td>{{ 'Sí' if s.revocado else 'No' }}</td><td>{% if not s.revocado %}<form method="post" action="{{ url_for('dashboard.revocar_sesion', sesion_id=s.id) }}"><button class="btn btn-sm btn-outline-danger">Revocar</button></form>{% else %}<span class="badge text-bg-secondary">Revocada</span>{% endif %}</td></tr>{% else %}<tr><td colspan="8" class="empty-state">No hay sesiones registradas.</td></tr>{% endfor %}</tbody></table></div></div>{% endblock %}
+{% extends 'dashboard/base.html' %}
+{% block page_title %}Sesiones y tokens{% endblock %}
+
+{% block content %}
+
+{% set total = sesiones|length %}
+{% set activas = sesiones|rejectattr('revocado')|list|length %}
+{% set revocadas = sesiones|selectattr('revocado')|list|length %}
+
+<!-- KPIs -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #1a5fa8;">
+            <div class="metric-card__label">Total sesiones</div>
+            <div class="metric-card__value">{{ total }}</div>
+            <div class="metric-card__hint">históricas</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #16a34a;">
+            <div class="metric-card__label">Activas</div>
+            <div class="metric-card__value" style="color:#16a34a;">{{ activas }}</div>
+            <div class="metric-card__hint">en uso</div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="metric-card" style="border-left:4px solid #dc2626;">
+            <div class="metric-card__label">Revocadas</div>
+            <div class="metric-card__value" style="color:#dc2626;">{{ revocadas }}</div>
+            <div class="metric-card__hint">bloqueadas</div>
+        </div>
+    </div>
+</div>
+
+<!-- TABLA -->
+<div class="panel-card">
+    <div class="panel-card__header">
+        <h3 class="panel-card__title">
+            <i class="bi bi-shield-lock me-2" style="color:#1a5fa8;"></i>
+            Sesiones activas / históricas
+        </h3>
+        <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">
+            <i class="bi bi-arrow-clockwise"></i> Refrescar
+        </a>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table table-modern align-middle">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Usuario</th>
+                    <th>Dispositivo / SO</th>
+                    <th>IP</th>
+                    <th>Emitido</th>
+                    <th>Expira</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in sesiones %}
+                <tr style="{% if s.revocado %}opacity:.6;{% endif %}">
+
+                    <td>
+                        <span style="font-weight:700; color:#1a5fa8;">#{{ s.id }}</span>
+                    </td>
+
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="
+                                width:34px; height:34px; border-radius:50%;
+                                background:linear-gradient(135deg,#1d4ed8,#3b82f6);
+                                display:grid; place-items:center;
+                                color:white; font-weight:700; font-size:.8rem;
+                                flex-shrink:0;
+                            ">
+                                {{ (s.usuario.nombres[:1] if s.usuario and s.usuario.nombres else '?').upper() }}
+                            </div>
+                            <div>
+                                <div style="font-weight:600; font-size:.85rem;">
+                                    {{ s.usuario.nombre_completo if s.usuario else '-' }}
+                                </div>
+                                <div style="font-size:.72rem; color:#94a3b8;">
+                                    {{ s.usuario.rol.nombre if s.usuario and s.usuario.rol else '' }}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+
+                    <td>
+                        <div style="font-size:.82rem; font-weight:600; color:#334155;">
+                            {% if s.dispositivo %}
+                                <i class="bi bi-phone"></i> {{ s.dispositivo }}
+                            {% else %}
+                                <span style="color:#94a3b8;">Desconocido</span>
+                            {% endif %}
+                        </div>
+                        <div style="font-size:.75rem; color:#94a3b8;">
+                            {% if s.sistema_operativo %}
+                                <i class="bi bi-cpu"></i> {{ s.sistema_operativo }}
+                            {% endif %}
+                        </div>
+                    </td>
+
+                    <td>
+                        <span style="
+                            font-family: monospace;
+                            font-size:.82rem;
+                            background:#f1f5f9;
+                            padding:3px 8px;
+                            border-radius:6px;
+                            color:#334155;
+                        ">{{ s.ip or '-' }}</span>
+                    </td>
+
+                    <td>
+                        <div style="font-size:.82rem; color:#334155;">
+                            {{ s.fecha_emision or '-' }}
+                        </div>
+                    </td>
+
+                    <td>
+                        <div style="font-size:.82rem; color:#334155;">
+                            {{ s.fecha_expiracion or '-' }}
+                        </div>
+                        {% if s.ultimo_uso %}
+                        <div style="font-size:.72rem; color:#94a3b8;">
+                            Último uso: {{ s.ultimo_uso }}
+                        </div>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if s.revocado %}
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:#fee2e2;color:#dc2626;font-size:.78rem;font-weight:700;border:1px solid #dc2626;">
+                                <i class="bi bi-x-circle"></i> Revocada
+                            </span>
+                            {% if s.fecha_revocacion %}
+                            <div style="font-size:.72rem;color:#94a3b8;margin-top:2px;">
+                                {{ s.fecha_revocacion }}
+                            </div>
+                            {% endif %}
+                        {% else %}
+                            <span style="display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;background:#d1e7dd;color:#0f5132;font-size:.78rem;font-weight:700;border:1px solid #198754;">
+                                <i class="bi bi-check-circle"></i> Activa
+                            </span>
+                        {% endif %}
+                    </td>
+
+                    <td>
+                        {% if not s.revocado %}
+                        <form method="post" action="{{ url_for('dashboard.revocar_sesion', sesion_id=s.id) }}">
+                            <button class="btn btn-sm btn-outline-danger"
+                                    onclick="return confirm('¿Revocar esta sesión?')"
+                                    style="border-radius:8px; font-size:.78rem; padding:4px 12px;">
+                                <i class="bi bi-shield-x"></i> Revocar
+                            </button>
+                        </form>
+                        {% else %}
+                            <span style="color:#94a3b8; font-size:.78rem;">—</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="empty-state">
+                        <i class="bi bi-shield-lock" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
+                        No hay sesiones registradas.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% endblock %}

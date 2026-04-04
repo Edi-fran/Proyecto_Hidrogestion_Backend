@@ -1,2 +1,201 @@
 <!doctype html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{% block title %}HidroGestión Dashboard{% endblock %}</title><link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet"><link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet"><link href="{{ url_for('dashboard.static', filename='css/style.css') }}" rel="stylesheet"></head><body class="app-body">{% set logged = session.get('web_user_id') %}{% if logged %}<div class="app-shell"><aside class="sidebar"><div><a class="brand" href="{{ url_for('dashboard.index') }}"><div class="brand-mark">HG</div><div><div class="brand-title">HidroGestión</div><div class="brand-subtitle">Panel administrativo</div></div></a><div class="user-badge"><div class="user-badge__avatar">{{ (session.get('web_name', 'A')[:1]).upper() }}</div><div><div class="user-badge__name">{{ session.get('web_name') }}</div><div class="user-badge__role">{{ session.get('web_role') }}</div></div></div><nav class="nav flex-column nav-dashboard"><a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}" href="{{ url_for('dashboard.index') }}"><i class="bi bi-grid"></i> Resumen</a><a class="nav-link {% if request.endpoint == 'dashboard.usuarios_view' %}active{% endif %}" href="{{ url_for('dashboard.usuarios_view') }}"><i class="bi bi-people"></i> Usuarios</a><a class="nav-link {% if request.endpoint == 'dashboard.medidores_view' %}active{% endif %}" href="{{ url_for('dashboard.medidores_view') }}"><i class="bi bi-speedometer2"></i> Medidores</a><a class="nav-link {% if request.endpoint == 'dashboard.lecturas_view' %}active{% endif %}" href="{{ url_for('dashboard.lecturas_view') }}"><i class="bi bi-clipboard-data"></i> Lecturas</a><a class="nav-link {% if request.endpoint == 'dashboard.planillas_view' %}active{% endif %}" href="{{ url_for('dashboard.planillas_view') }}"><i class="bi bi-receipt"></i> Planillas</a><a class="nav-link {% if request.endpoint == 'dashboard.incidencias_view' %}active{% endif %}" href="{{ url_for('dashboard.incidencias_view') }}"><i class="bi bi-tools"></i> Incidencias</a><a class="nav-link {% if request.endpoint == 'dashboard.avisos_view' %}active{% endif %}" href="{{ url_for('dashboard.avisos_view') }}"><i class="bi bi-megaphone"></i> Avisos</a><a class="nav-link {% if request.endpoint == 'dashboard.sesiones_view' %}active{% endif %}" href="{{ url_for('dashboard.sesiones_view') }}"><i class="bi bi-shield-lock"></i> Sesiones</a><a class="nav-link {% if request.endpoint == 'dashboard.recaudacion_view' %}active{% endif %}" href="{{ url_for('dashboard.recaudacion_view') }}"><i class="bi bi-cash-stack"></i> Recaudación</a><a class="nav-link {% if request.endpoint == 'dashboard.pagos_view' %}active{% endif %}" href="{{ url_for('dashboard.pagos_view') }}"><i class="bi bi-receipt-cutoff"></i> Pagos</a><a class="nav-link {% if request.endpoint == 'dashboard.movimientos_view' %}active{% endif %}" href="{{ url_for('dashboard.movimientos_view') }}"><i class="bi bi-wallet2"></i> Caja</a><a class="nav-link {% if request.endpoint == 'dashboard.tarifas_view' %}active{% endif %}" href="{{ url_for('dashboard.tarifas_view') }}"><i class="bi bi-sliders"></i> Tarifas</a><a class="nav-link {% if request.endpoint == 'dashboard.reuniones_view' %}active{% endif %}" href="{{ url_for('dashboard.reuniones_view') }}"><i class="bi bi-calendar-event"></i> Reuniones</a><a class="nav-link {% if request.endpoint == 'dashboard.recordatorios_view' %}active{% endif %}" href="{{ url_for('dashboard.recordatorios_view') }}"><i class="bi bi-alarm"></i> Recordatorios</a><a class="nav-link {% if request.endpoint == 'dashboard.notificaciones_view' %}active{% endif %}" href="{{ url_for('dashboard.notificaciones_view') }}"><i class="bi bi-bell"></i> Notificaciones</a><a class="nav-link {% if request.endpoint == 'dashboard.mapa_incidencias_view' %}active{% endif %}" href="{{ url_for('dashboard.mapa_incidencias_view') }}"><i class="bi bi-geo-alt"></i> Mapa incidencias</a><a class="nav-link {% if request.endpoint == 'dashboard.ordenes_view' %}active{% endif %}" href="{{ url_for('dashboard.ordenes_view') }}"><i class="bi bi-list-check"></i> Órdenes</a><a class="nav-link {% if request.endpoint == 'dashboard.mensajes_view' %}active{% endif %}" href="{{ url_for('dashboard.mensajes_view') }}"><i class="bi bi-chat-dots"></i> Mensajes</a></nav></div><div class="sidebar-footer"><a class="btn btn-outline-light w-100 mb-2" href="{{ url_for('dashboard.refresh_page') }}"><i class="bi bi-arrow-clockwise"></i> Refrescar panel</a><a class="btn btn-outline-light w-100" href="{{ url_for('auth.web_logout') }}">Cerrar sesión</a></div></aside><main class="content-area"><header class="topbar"><div><div class="eyebrow">Sistema comunitario de agua potable</div><h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1></div><div class="topbar-actions"><a class="btn btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}"><i class="bi bi-arrow-repeat"></i> Refrescar</a><span class="pill-soft">{{ session.get('web_role') }}</span></div></header>{% with messages = get_flashed_messages(with_categories=true) %}{% if messages %}{% for category, message in messages %}<div class="alert alert-{{ category }} border-0 shadow-sm">{{ message }}</div>{% endfor %}{% endif %}{% endwith %}{% block content %}{% endblock %}</main></div>{% else %}<main>{% block public_content %}{% endblock %}</main>{% endif %}<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script></body></html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}HidroGestión Dashboard{% endblock %}</title>
+
+    <!-- Favicon SVG inline -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%230f2d5c'/><path d='M55 52 C55 52 42 66 42 74 C42 82 47 88 55 88 C63 88 68 82 68 74 C68 66 55 52 55 52Z' fill='%233b82f6'/><rect x='30' y='38' width='32' height='10' rx='5' fill='%2360a5fa'/><circle cx='32' cy='43' r='7' fill='%233b82f6'/><path d='M56 38 Q62 38 62 44 L62 52' fill='none' stroke='%2360a5fa' stroke-width='8' stroke-linecap='round'/><rect x='58' y='26' width='6' height='14' rx='3' fill='%23e2e8f0'/><rect x='54' y='31' width='14' height='4' rx='2' fill='%23e2e8f0'/></svg>">
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="{{ url_for('dashboard.static', filename='css/style.css') }}" rel="stylesheet">
+</head>
+
+<body class="app-body">
+{% set logged = session.get('web_user_id') %}
+
+{% if logged %}
+<div class="app-shell">
+
+    <!-- ══ SIDEBAR ══ -->
+    <aside class="sidebar">
+        <div>
+
+            <!-- BRAND con logo SVG -->
+            <a class="brand" href="{{ url_for('dashboard.index') }}">
+                <div class="brand-mark">
+                    <!-- Logo SVG inline: grifo + gota -->
+                    <svg width="44" height="44" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="100" height="100" rx="22" fill="#1a3a6b"/>
+                        <!-- Tubo horizontal -->
+                        <rect x="18" y="36" width="38" height="12" rx="6" fill="#60a5fa"/>
+                        <!-- Tapa izquierda -->
+                        <circle cx="20" cy="42" r="8" fill="#3b82f6"/>
+                        <circle cx="20" cy="42" r="4" fill="#60a5fa"/>
+                        <!-- Codo -->
+                        <path d="M50 36 Q58 36 58 44 L58 54" fill="none" stroke="#60a5fa" stroke-width="10" stroke-linecap="round"/>
+                        <!-- Cuello vertical -->
+                        <rect x="53" y="53" width="10" height="16" rx="3" fill="#60a5fa"/>
+                        <!-- Base salida -->
+                        <rect x="47" y="68" width="22" height="7" rx="3" fill="#93c5fd"/>
+                        <!-- Manija -->
+                        <rect x="55" y="24" width="7" height="14" rx="3" fill="#e2e8f0"/>
+                        <rect x="51" y="30" width="15" height="5" rx="2" fill="#e2e8f0"/>
+                        <!-- Gota -->
+                        <path d="M58 80 C58 80 48 92 48 99 C48 106 52 111 58 111 C64 111 68 106 68 99 C68 92 58 80 58 80Z"
+                              transform="scale(0.78) translate(16, -4)" fill="#3b82f6"/>
+                        <ellipse cx="56" cy="90" rx="3" ry="5" fill="#93c5fd" opacity="0.6"
+                                 transform="rotate(-15 56 90)"/>
+                        <!-- Gotitas -->
+                        <circle cx="58" cy="77" r="2" fill="#93c5fd" opacity="0.8"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="brand-title">HidroGestión</div>
+                    <div class="brand-subtitle">Panel administrativo</div>
+                </div>
+            </a>
+
+            <!-- USUARIO -->
+            <div class="user-badge">
+                <div class="user-badge__avatar">
+                    {{ (session.get('web_name', 'A')[:1]).upper() }}
+                </div>
+                <div>
+                    <div class="user-badge__name">{{ session.get('web_name') }}</div>
+                    <div class="user-badge__role">{{ session.get('web_role') }}</div>
+                </div>
+            </div>
+
+            <!-- NAVEGACIÓN -->
+            <nav class="nav flex-column nav-dashboard">
+                <a class="nav-link {% if request.endpoint == 'dashboard.index' %}active{% endif %}"
+                   href="{{ url_for('dashboard.index') }}">
+                    <i class="bi bi-grid"></i> Resumen
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.usuarios_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.usuarios_view') }}">
+                    <i class="bi bi-people"></i> Usuarios
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.medidores_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.medidores_view') }}">
+                    <i class="bi bi-speedometer2"></i> Medidores
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.lecturas_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.lecturas_view') }}">
+                    <i class="bi bi-clipboard-data"></i> Lecturas
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.planillas_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.planillas_view') }}">
+                    <i class="bi bi-receipt"></i> Planillas
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.incidencias_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.incidencias_view') }}">
+                    <i class="bi bi-tools"></i> Incidencias
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.avisos_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.avisos_view') }}">
+                    <i class="bi bi-megaphone"></i> Avisos
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.sesiones_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.sesiones_view') }}">
+                    <i class="bi bi-shield-lock"></i> Sesiones
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.recaudacion_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.recaudacion_view') }}">
+                    <i class="bi bi-cash-stack"></i> Recaudación
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.pagos_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.pagos_view') }}">
+                    <i class="bi bi-receipt-cutoff"></i> Pagos
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.movimientos_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.movimientos_view') }}">
+                    <i class="bi bi-wallet2"></i> Caja
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.tarifas_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.tarifas_view') }}">
+                    <i class="bi bi-sliders"></i> Tarifas
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.reuniones_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.reuniones_view') }}">
+                    <i class="bi bi-calendar-event"></i> Reuniones
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.recordatorios_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.recordatorios_view') }}">
+                    <i class="bi bi-alarm"></i> Recordatorios
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.notificaciones_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.notificaciones_view') }}">
+                    <i class="bi bi-bell"></i> Notificaciones
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.mapa_incidencias_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.mapa_incidencias_view') }}">
+                    <i class="bi bi-geo-alt"></i> Mapa incidencias
+                </a>
+                <a class="nav-link {% if request.endpoint == 'dashboard.ordenes_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.ordenes_view') }}">
+                    <i class="bi bi-list-check"></i> Órdenes
+                </a>
+
+                <a class="nav-link {% if request.endpoint == 'dashboard.iot_view' %}active{% endif %}"
+                href="{{ url_for('dashboard.iot_view') }}">
+                <i class="bi bi-wifi"></i> Monitor IoT
+                 </a>
+
+
+                <a class="nav-link {% if request.endpoint == 'dashboard.mensajes_view' %}active{% endif %}"
+                   href="{{ url_for('dashboard.mensajes_view') }}">
+                    <i class="bi bi-chat-dots"></i> Mensajes
+                </a>
+            </nav>
+        </div>
+
+        <!-- FOOTER SIDEBAR -->
+        <div class="sidebar-footer">
+            <a class="btn btn-outline-light w-100 mb-2" href="{{ url_for('dashboard.refresh_page') }}">
+                <i class="bi bi-arrow-clockwise"></i> Refrescar panel
+            </a>
+            <a class="btn btn-outline-light w-100" href="{{ url_for('auth.web_logout') }}">
+                <i class="bi bi-box-arrow-right"></i> Cerrar sesión
+            </a>
+        </div>
+    </aside>
+
+    <!-- ══ CONTENIDO PRINCIPAL ══ -->
+    <main class="content-area">
+        <header class="topbar">
+            <div>
+                <div class="eyebrow">Sistema comunitario de agua potable</div>
+                <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+            </div>
+            <div class="topbar-actions">
+                <a class="btn btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">
+                    <i class="bi bi-arrow-repeat"></i> Refrescar
+                </a>
+                <span class="pill-soft">{{ session.get('web_role') }}</span>
+            </div>
+        </header>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ category }} border-0 shadow-sm">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+    </main>
+
+</div>
+
+{% else %}
+<main>{% block public_content %}{% endblock %}</main>
+{% endif %}
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.7/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

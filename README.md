@@ -1,4 +1,4 @@
-# 💧 HidroGestión App
+# 💧 HidroGestión App Backend
 
 <div align="center">
 
@@ -17,42 +17,32 @@ Proyecto completo con backend Flask + app móvil React Native + dashboard web + 
 
 ---
 
-## 📁 Estructura del Repositorio
+## 🔗 Repositorios del Sistema
 
-```
-hidrogestion-suite/
-├── backend/                        # API Flask + Dashboard Web
-│   ├── run.py
-│   ├── requirements.txt
-│   ├── .env.example
-│   ├── instance/
-│   │   └── hidrogestion.sqlite
-│   ├── uploads/
-│   └── app/
-│       ├── __init__.py
-│       ├── models.py
-│       ├── routes/
-│       ├── templates/
-│       └── static/
-│
-└── frontend/
-    └── hidrogestion_frontend/      # App móvil React Native (Expo)
-        ├── App.tsx
-        ├── package.json
-        └── src/
-            ├── config.ts           # ← Configura aquí la IP del backend
-            ├── screens/
-            └── services/
-```
+Este backend debe funcionar en conjunto con el frontend móvil:
+
+> 📱 **Frontend oficial del proyecto:**  
+> https://github.com/Edi-fran/Higestion_App_Frontend.git
+
+| Repositorio | Descripción | Enlace |
+|---|---|---|
+| **Backend** (este repo) | API Flask + Dashboard Web + IoT | Repositorio actual |
+| **Frontend** | App móvil React Native + Expo | https://github.com/Edi-fran/Higestion_App_Frontend.git |
 
 ---
 
-## 🚀 Instalación y Ejecución
+## 📁 Estructura del Repositorio
+---
 
-### ⚙️ Backend Flask
+## 🚀 Instalación y Ejecución Completa
 
-**1. Entrar a la carpeta del backend**
+> ⚠️ Para el sistema funcione correctamente debes ejecutar **primero el backend** y luego el frontend.
+
+### ⚙️ Paso 1 — Backend Flask
+
+**1. Clonar este repositorio**
 ```powershell
+git clone https://github.com/Edi-fran/Proyecto_Hidrogestion_Backend.git
 cd backend
 ```
 
@@ -84,11 +74,12 @@ Edita `.env` con tus valores de `SECRET_KEY` y `JWT_SECRET_KEY`.
 
 ---
 
-### 📱 Frontend Expo (App Móvil)
+### 📱 Paso 2 — Frontend Expo (App Móvil)
 
-**1. Entrar a la carpeta del frontend**
+**1. Clonar el repositorio del frontend**
 ```powershell
-cd frontend/hidrogestion_frontend
+git clone https://github.com/Edi-fran/Higestion_App_Frontend.git
+cd Higestion_App_Frontend
 ```
 
 **2. Instalar dependencias npm**
@@ -172,15 +163,7 @@ Escanea el QR con la app **Expo Go** en tu celular (Android/iOS).
 ## 📡 Módulo IoT — ESP32-S3 + YF-S201
 
 ### Conexiones eléctricas
-
-```
-YF-S201 🔴 Rojo     → VIN  (5V)
-YF-S201 ⚫ Negro    → GND
-YF-S201 🟡 Amarillo → GPIO4
-```
-
 ### Configuración del microcontrolador
-
 ```cpp
 const char* WIFI_SSID        = "TU_WIFI";
 const char* WIFI_PASSWORD    = "TU_PASSWORD";
@@ -209,13 +192,6 @@ const float PULSOS_POR_LITRO = 7.5;   // Calibración YF-S201
 
 ### Fórmulas de cálculo
 
-```
-Litros/s    = pulsos / 7.5
-Caudal L/min = litros_s × 60
-Caudal m³/h  = caudal_lpm × 0.001 × 60
-Volumen m³   = litros / 1000
-```
-
 ---
 
 ## 🌐 Dashboard Web
@@ -238,27 +214,6 @@ Acceso: `http://127.0.0.1:5000/dashboard/login`
 ---
 
 ## 🔗 Endpoints principales de la API
-
-```
-POST   /api/auth/login                  Iniciar sesión
-POST   /api/auth/refresh                Renovar token
-GET    /api/auth/me                     Perfil actual
-GET    /api/usuarios                    Listar usuarios
-GET    /api/mi-vivienda                 Datos del socio
-GET    /api/lecturas                    Listar lecturas
-POST   /api/lecturas                    Registrar lectura
-GET    /api/planillas                   Listar planillas
-GET    /api/planillas/{id}/descargar    Descargar PDF
-GET    /api/incidencias                 Listar incidencias
-POST   /api/incidencias                 Crear incidencia
-GET    /api/ordenes                     Mis órdenes de trabajo
-POST   /api/ordenes/{id}/finalizar      Finalizar orden
-GET    /api/notificaciones              Mis notificaciones
-POST   /api/iot/lectura                 Recibir datos ESP32
-GET    /api/iot/mi-medidor              Mi medidor IoT
-GET    /api/health                      Estado del servidor
-```
-
 ---
 
 ## 🗄️ Base de Datos
@@ -283,8 +238,8 @@ SQLite con **33 entidades** gestionadas por SQLAlchemy:
 
 [![GitHub](https://img.shields.io/badge/GitHub-Edi--fran-181717?style=for-the-badge&logo=github)](https://github.com/Edi-fran)
 
-*Tecnólogo en Desarrollo de Software*
-*Universidad Estatal Amazónica — UEA*
+*Tecnólogo en Desarrollo de Software*  
+*Universidad Estatal Amazónica — UEA*  
 *Puyo, Pastaza, Ecuador*
 
 </div>
@@ -299,8 +254,8 @@ SQLite con **33 entidades** gestionadas por SQLAlchemy:
 | David Paul Guerra Delgado | Frontend · Diseño UI |
 | Luis Eduardo Argudo Guzmán | Testing · Documentación |
 
-**Docente:** Ing. Julio César Hurtado Jerves
-**Asignatura:** 2526 - Aplicaciones Móviles (B) — UEA-L-UFPTI-008-B
+**Docente:** Ing. Julio César Hurtado Jerves  
+**Asignatura:** 2526 - Aplicaciones Móviles (B) — UEA-L-UFPTI-008-B  
 **Período:** 2025 – 2026 · Universidad Estatal Amazónica
 
 ---

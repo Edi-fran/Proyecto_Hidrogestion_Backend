@@ -238,7 +238,7 @@ SQLite con **33 entidades** gestionadas por SQLAlchemy:
 
 [![GitHub](https://img.shields.io/badge/GitHub-Edi--fran-181717?style=for-the-badge&logo=github)](https://github.com/Edi-fran)
 
-*Tecnólogo en Desarrollo de Software*  
+*Tecnólogo en Desarrollo de aplicaciones web*  
 *Universidad Estatal Amazónica — UEA*  
 *Puyo, Pastaza, Ecuador*
 

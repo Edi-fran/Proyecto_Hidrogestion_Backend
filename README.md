@@ -1,4 +1,4 @@
-# 💧 HidroGestión Suite
+# 💧 HidroGestión App
 
 <div align="center">
 

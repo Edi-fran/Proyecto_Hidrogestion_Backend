@@ -94,6 +94,20 @@ def usuarios_view():
             db.session.commit()
             flash('Usuario desactivado correctamente.', 'success')
             return redirect(url_for('dashboard.usuarios_view'))
+        if action == 'reset_password':
+            user = Usuario.query.get_or_404(to_int(request.form.get('user_id')))
+            nueva = request.form.get('nueva_password', '').strip()
+            confirmar = request.form.get('confirmar_password', '').strip()
+            if not nueva or len(nueva) < 6:
+                flash('La contraseña debe tener al menos 6 caracteres.', 'danger')
+                return redirect(url_for('dashboard.usuarios_view'))
+            if nueva != confirmar:
+                flash('Las contraseñas no coinciden.', 'danger')
+                return redirect(url_for('dashboard.usuarios_view'))
+            user.password_hash = generate_password_hash(nueva)
+            db.session.commit()
+            flash(f'Contraseña de {user.nombre_completo} restablecida correctamente.', 'success')
+            return redirect(url_for('dashboard.usuarios_view'))
         if action == 'update':
             user = Usuario.query.get_or_404(to_int(request.form.get('user_id')))
             rol = Rol.query.filter_by(nombre=(request.form.get('rol') or user.rol.nombre).upper()).first()

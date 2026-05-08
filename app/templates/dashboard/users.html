@@ -3,37 +3,69 @@
 
 {% block content %}
 
-<!-- KPIs -->
+{# ══ Macros ══ #}
+{% macro badge_rol(nombre) %}
+  {% if nombre == 'ADMIN' %}
+    <span class="badge-rol badge-rol--admin">{{ nombre }}</span>
+  {% elif nombre == 'TECNICO' %}
+    <span class="badge-rol badge-rol--tecnico">{{ nombre }}</span>
+  {% else %}
+    <span class="badge-rol badge-rol--socio">{{ nombre }}</span>
+  {% endif %}
+{% endmacro %}
+
+{% macro badge_estado(estado) %}
+  {% if estado == 'ACTIVO' %}
+    <span class="badge-estado badge-estado--activo">✓ ACTIVO</span>
+  {% else %}
+    <span class="badge-estado badge-estado--inactivo">✗ INACTIVO</span>
+  {% endif %}
+{% endmacro %}
+
+{# ══ Flash messages ══ #}
+{% with messages = get_flashed_messages(with_categories=true) %}
+  {% if messages %}
+    {% for category, message in messages %}
+      <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+        <i class="bi bi-{% if category == 'success' %}check-circle{% elif category == 'danger' %}x-circle{% else %}info-circle{% endif %} me-2"></i>
+        {{ message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Cerrar"></button>
+      </div>
+    {% endfor %}
+  {% endif %}
+{% endwith %}
+
+{# ══ KPIs ══ #}
 <div class="row g-3 mb-3">
     <div class="col-md-3">
-        <div class="metric-card" style="border-left:4px solid #1a5fa8;">
+        <div class="metric-card metric-card--primary">
             <div class="metric-card__label">Total usuarios</div>
             <div class="metric-card__value">{{ usuarios|length }}</div>
             <div class="metric-card__hint">registrados</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="metric-card" style="border-left:4px solid #16a34a;">
+        <div class="metric-card metric-card--success">
             <div class="metric-card__label">Activos</div>
-            <div class="metric-card__value" style="color:#16a34a;">
+            <div class="metric-card__value metric-card__value--success">
                 {{ usuarios|selectattr('estado','eq','ACTIVO')|list|length }}
             </div>
             <div class="metric-card__hint">en el sistema</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="metric-card" style="border-left:4px solid #f59e0b;">
+        <div class="metric-card metric-card--warning">
             <div class="metric-card__label">Socios</div>
-            <div class="metric-card__value" style="color:#f59e0b;">
+            <div class="metric-card__value metric-card__value--warning">
                 {{ usuarios|selectattr('socio')|list|length }}
             </div>
             <div class="metric-card__hint">con medidor</div>
         </div>
     </div>
     <div class="col-md-3">
-        <div class="metric-card" style="border-left:4px solid #dc2626;">
+        <div class="metric-card metric-card--danger">
             <div class="metric-card__label">Inactivos</div>
-            <div class="metric-card__value" style="color:#dc2626;">
+            <div class="metric-card__value metric-card__value--danger">
                 {{ usuarios|rejectattr('estado','eq','ACTIVO')|list|length }}
             </div>
             <div class="metric-card__hint">desactivados</div>
@@ -43,23 +75,22 @@
 
 <div class="row g-3">
 
-    <!-- FORMULARIO CREAR -->
+    {# ══ FORMULARIO CREAR ══ #}
     <div class="col-lg-4">
         <div class="panel-card">
             <div class="panel-card__header">
                 <h3 class="panel-card__title">
-                    <i class="bi bi-person-plus me-2" style="color:#1a5fa8;"></i>
+                    <i class="bi bi-person-plus panel-icon me-2"></i>
                     Nuevo usuario
                 </h3>
             </div>
 
-            <form method="post">
+            <form method="post" enctype="multipart/form-data" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+                <input type="hidden" name="action" value="create">
 
-                <!-- Datos personales -->
-                <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px;">
-                    <div style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">
-                        Datos personales
-                    </div>
+                <div class="form-section">
+                    <div class="form-section__label">Datos personales</div>
                     <div class="row g-2">
                         <div class="col-6">
                             <label class="form-label">Rol</label>
@@ -74,11 +105,11 @@
                             <input class="form-control form-control-sm" name="cedula" placeholder="0000000000">
                         </div>
                         <div class="col-6">
-                            <label class="form-label">Nombres <span style="color:red">*</span></label>
+                            <label class="form-label">Nombres <span class="text-danger">*</span></label>
                             <input class="form-control form-control-sm" name="nombres" required>
                         </div>
                         <div class="col-6">
-                            <label class="form-label">Apellidos <span style="color:red">*</span></label>
+                            <label class="form-label">Apellidos <span class="text-danger">*</span></label>
                             <input class="form-control form-control-sm" name="apellidos" required>
                         </div>
                         <div class="col-6">
@@ -92,28 +123,77 @@
                     </div>
                 </div>
 
-                <!-- Acceso -->
-                <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px;">
-                    <div style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">
-                        Acceso al sistema
-                    </div>
+                <div class="form-section">
+                    <div class="form-section__label">Acceso al sistema</div>
                     <div class="row g-2">
                         <div class="col-6">
-                            <label class="form-label">Usuario <span style="color:red">*</span></label>
+                            <label class="form-label">Usuario <span class="text-danger">*</span></label>
                             <input class="form-control form-control-sm" name="username" required>
                         </div>
                         <div class="col-6">
                             <label class="form-label">Contraseña</label>
                             <input class="form-control form-control-sm" name="password" value="Temporal123*">
                         </div>
+                        <div class="col-12">
+                            <label class="form-label">
+                                Pregunta de seguridad <span class="text-danger">*</span>
+                            </label>
+                            <select class="form-select form-select-sm" name="pregunta_seguridad" required>
+                                <option value="">— Selecciona una pregunta —</option>
+                                {% for p in preguntas %}
+                                <option value="{{ p }}">{{ p }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">
+                                Respuesta secreta <span class="text-danger">*</span>
+                            </label>
+                            <input class="form-control form-control-sm" name="respuesta_seguridad"
+                                   placeholder="No distingue mayúsculas" required>
+                        </div>
                     </div>
                 </div>
 
-                <!-- Datos de vivienda -->
-                <div style="background:#f8fafc;border-radius:12px;padding:12px;margin-bottom:12px;">
-                    <div style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:8px;">
-                        Vivienda / Medidor
+                <div class="form-section">
+                    <div class="form-section__label">
+                        Consentimiento — Protección de Datos Personales
                     </div>
+
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="consentimiento_datos"
+                               id="consentimientoCheck" value="1" required>
+                        <label class="form-check-label" for="consentimientoCheck" style="font-size:.82rem;line-height:1.5;">
+                            El titular declara haber sido informado y otorga su
+                            <strong>consentimiento libre, específico, informado e inequívoco</strong>
+                            para que la <strong>Junta de Agua HidroGestión</strong>, en calidad de
+                            Responsable del Tratamiento, procese sus datos personales
+                            (nombres, cédula, dirección, teléfono, correo electrónico y
+                            datos de consumo de agua) con las finalidades de:
+                            administración del servicio de agua potable, emisión de
+                            planillas, notificaciones operativas y control de incidencias,
+                            conforme a lo establecido en la
+                            <strong>Ley Orgánica de Protección de Datos Personales del Ecuador
+                            (LOPDP, R.O. 459 — 26 mayo 2021)</strong> y su Reglamento.
+                            <span class="text-danger">*</span>
+                        </label>
+                    </div>
+
+                    <button type="button" class="btn btn-sm btn-outline-secondary mb-2"
+                            data-bs-toggle="modal" data-bs-target="#modalLopdp"
+                            style="font-size:.75rem;">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Ver aviso de privacidad completo y derechos ARCO
+                    </button>
+
+                    <div class="form-text">
+                        Campo obligatorio. Sin consentimiento no es posible registrar al usuario
+                        (Art. 8, LOPDP).
+                    </div>
+                </div>
+
+                <div class="form-section">
+                    <div class="form-section__label">Vivienda / Medidor</div>
                     <div class="row g-2">
                         <div class="col-12">
                             <label class="form-label">Dirección</label>
@@ -157,12 +237,12 @@
         </div>
     </div>
 
-    <!-- TABLA USUARIOS -->
+    {# ══ TABLA USUARIOS ══ #}
     <div class="col-lg-8">
         <div class="panel-card">
             <div class="panel-card__header">
                 <h3 class="panel-card__title">
-                    <i class="bi bi-people me-2" style="color:#1a5fa8;"></i>
+                    <i class="bi bi-people panel-icon me-2"></i>
                     Usuarios registrados
                 </h3>
                 <a class="btn btn-sm btn-outline-primary" href="{{ url_for('dashboard.refresh_page') }}">
@@ -171,7 +251,7 @@
             </div>
 
             <div class="table-responsive">
-                <table class="table table-modern align-middle">
+                <table class="table table-modern align-middle mb-0">
                     <thead>
                         <tr>
                             <th>#</th>
@@ -185,85 +265,61 @@
                     </thead>
                     <tbody>
                         {% for u in usuarios %}
-                        <tr style="{% if u.estado != 'ACTIVO' %}opacity:.6;{% endif %}">
+                        <tr class="{{ 'row-inactive' if u.estado != 'ACTIVO' else '' }}">
 
                             <td>
-                                <span style="font-weight:700;color:#1a5fa8;">#{{ u.id }}</span>
+                                <span class="badge-id">#{{ u.id }}</span>
                             </td>
 
                             <td>
-                                <div style="display:flex;align-items:center;gap:8px;">
-                                    <div style="
-                                        width:36px;height:36px;border-radius:50%;
-                                        background:linear-gradient(135deg,#1d4ed8,#3b82f6);
-                                        display:grid;place-items:center;
-                                        color:white;font-weight:700;font-size:.85rem;
-                                        flex-shrink:0;
-                                    ">{{ (u.nombres[:1]).upper() }}</div>
+                                <div class="u-info">
+                                    <div class="u-avatar">{{ (u.nombres or '?')[:1]|upper }}</div>
                                     <div>
-                                        <div style="font-weight:600;font-size:.88rem;color:#0f172a;">
-                                            {{ u.nombre_completo }}
-                                        </div>
-                                        <div style="font-size:.75rem;color:#94a3b8;">
-                                            {{ u.email or u.username }}
-                                        </div>
+                                        <div class="u-info__name">{{ u.nombre_completo }}</div>
+                                        <div class="u-info__sub">{{ u.email or u.username }}</div>
                                     </div>
                                 </div>
                             </td>
 
-                            <td>
-                                <span style="
-                                    padding:3px 10px;border-radius:8px;
-                                    font-size:.75rem;font-weight:700;
-                                    {% if u.rol.nombre == 'ADMIN' %}
-                                        background:#e0ecff;color:#1d4ed8;
-                                    {% elif u.rol.nombre == 'TECNICO' %}
-                                        background:#fff3cd;color:#856404;
-                                    {% else %}
-                                        background:#f1f5f9;color:#475569;
-                                    {% endif %}
-                                ">{{ u.rol.nombre }}</span>
-                            </td>
+                            <td>{{ badge_rol(u.rol.nombre) }}</td>
 
                             <td>
-                                <span style="font-family:monospace;font-size:.82rem;background:#f1f5f9;padding:3px 8px;border-radius:6px;">
+                                <span class="badge-medidor">
                                     {{ u.socio.medidores[0].numero_medidor if u.socio and u.socio.medidores else '-' }}
                                 </span>
                             </td>
 
-                            <td style="max-width:160px;">
-                                <div style="font-size:.82rem;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                            <td>
+                                <div class="cell-address">
                                     {{ u.socio.viviendas[0].direccion if u.socio and u.socio.viviendas else '-' }}
                                 </div>
                             </td>
 
-                            <td>
-                                {% if u.estado == 'ACTIVO' %}
-                                <span style="padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:700;background:#d1e7dd;color:#0f5132;border:1px solid #198754;">
-                                    ✓ ACTIVO
-                                </span>
-                                {% else %}
-                                <span style="padding:3px 10px;border-radius:999px;font-size:.75rem;font-weight:600;background:#fee2e2;color:#dc2626;border:1px solid #dc2626;">
-                                    ✗ INACTIVO
-                                </span>
-                                {% endif %}
-                            </td>
+                            <td>{{ badge_estado(u.estado) }}</td>
 
                             <td>
-                                <div style="display:flex;gap:5px;">
-                                    <button class="btn btn-sm btn-outline-primary"
+                                <div class="d-flex gap-1">
+                                    <button class="btn btn-sm btn-outline-primary btn-accion"
                                             data-bs-toggle="modal"
                                             data-bs-target="#editUser{{ u.id }}"
-                                            style="border-radius:8px;font-size:.78rem;padding:4px 10px;">
+                                            aria-label="Editar {{ u.nombre_completo }}">
                                         <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <button class="btn btn-sm btn-outline-warning btn-accion"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#resetPwd{{ u.id }}"
+                                            aria-label="Restablecer contraseña de {{ u.nombre_completo }}">
+                                        <i class="bi bi-key"></i>
                                     </button>
                                     {% if u.estado == 'ACTIVO' %}
                                     <form method="post" class="d-inline">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
                                         <input type="hidden" name="action" value="delete">
                                         <input type="hidden" name="user_id" value="{{ u.id }}">
-                                        <button class="btn btn-sm btn-outline-danger"
-                                                onclick="return confirm('¿Desactivar este usuario?')"
-                                                style="border-radius:8px;font-size:.78rem;padding:4px 10px;">
+                                        <button class="btn btn-sm btn-outline-danger btn-accion"
+                                                type="submit"
+                                                onclick="return confirm('¿Desactivar a {{ u.nombre_completo }}?')"
+                                                aria-label="Desactivar {{ u.nombre_completo }}">
                                             <i class="bi bi-person-x"></i>
                                         </button>
                                     </form>
@@ -272,97 +328,10 @@
                             </td>
                         </tr>
 
-                        <!-- MODAL EDITAR -->
-                        <div class="modal fade" id="editUser{{ u.id }}" tabindex="-1">
-                            <div class="modal-dialog modal-lg">
-                                <div class="modal-content" style="border-radius:16px;border:none;">
-                                    <form method="post">
-                                        <div class="modal-header" style="background:linear-gradient(135deg,#1a5fa8,#3b82f6);color:white;border-radius:16px 16px 0 0;">
-                                            <h5 class="modal-title">
-                                                <i class="bi bi-pencil-square me-2"></i>
-                                                Editar — {{ u.nombre_completo }}
-                                            </h5>
-                                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                                        </div>
-
-                                        <div class="modal-body p-4">
-                                            <input type="hidden" name="action" value="update">
-                                            <input type="hidden" name="user_id" value="{{ u.id }}">
-
-                                            <div class="row g-3">
-                                                <div class="col-md-4">
-                                                    <label class="form-label">Rol</label>
-                                                    <select class="form-select" name="rol">
-                                                        {% for rol in roles %}
-                                                        <option value="{{ rol.nombre }}" {% if u.rol.nombre == rol.nombre %}selected{% endif %}>{{ rol.nombre }}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <label class="form-label">Estado</label>
-                                                    <select class="form-select" name="estado">
-                                                        <option {% if u.estado == 'ACTIVO' %}selected{% endif %}>ACTIVO</option>
-                                                        <option {% if u.estado == 'INACTIVO' %}selected{% endif %}>INACTIVO</option>
-                                                    </select>
-                                                </div>
-                                                <div class="col-md-4">
-                                                    <label class="form-label">Cédula</label>
-                                                    <input class="form-control" name="cedula" value="{{ u.cedula or '' }}">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Nombres</label>
-                                                    <input class="form-control" name="nombres" value="{{ u.nombres }}">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Apellidos</label>
-                                                    <input class="form-control" name="apellidos" value="{{ u.apellidos }}">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Teléfono</label>
-                                                    <input class="form-control" name="telefono" value="{{ u.telefono or '' }}">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Email</label>
-                                                    <input class="form-control" name="email" value="{{ u.email or '' }}">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Usuario</label>
-                                                    <input class="form-control" name="username" value="{{ u.username }}">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Nueva contraseña</label>
-                                                    <input class="form-control" name="password" placeholder="Dejar vacío para no cambiar">
-                                                </div>
-                                                <div class="col-12">
-                                                    <label class="form-label">Dirección</label>
-                                                    <input class="form-control" name="direccion" value="{{ u.socio.viviendas[0].direccion if u.socio and u.socio.viviendas else (u.direccion_referencia or '') }}">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">Código socio</label>
-                                                    <input class="form-control" name="codigo_socio" value="{{ u.socio.codigo_socio if u.socio else '' }}">
-                                                </div>
-                                                <div class="col-md-6">
-                                                    <label class="form-label">N° medidor</label>
-                                                    <input class="form-control" name="numero_medidor" value="{{ u.socio.medidores[0].numero_medidor if u.socio and u.socio.medidores else '' }}">
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="modal-footer" style="border-top:1px solid #e2e8f0;">
-                                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancelar</button>
-                                            <button class="btn btn-primary" type="submit">
-                                                <i class="bi bi-check-lg me-1"></i> Guardar cambios
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-
                         {% else %}
                         <tr>
                             <td colspan="7" class="empty-state">
-                                <i class="bi bi-people" style="font-size:2rem;display:block;margin-bottom:8px;color:#cbd5e1;"></i>
+                                <i class="bi bi-people empty-state__icon"></i>
                                 No hay usuarios registrados.
                             </td>
                         </tr>
@@ -370,6 +339,394 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+    </div>
+</div>
+
+{# ══ MODALES RESTABLECER CONTRASEÑA ══ #}
+{% for u in usuarios %}
+<div class="modal fade" id="resetPwd{{ u.id }}" tabindex="-1"
+     aria-labelledby="resetPwdLabel{{ u.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content modal-content-rounded">
+            <form method="post" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+                <input type="hidden" name="action" value="reset_password">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+
+                <div class="modal-header modal-header-gradient">
+                    <h5 class="modal-title" id="resetPwdLabel{{ u.id }}">
+                        <i class="bi bi-key me-2"></i> Restablecer contraseña
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                            data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <p class="text-muted mb-3">
+                        <i class="bi bi-person me-1"></i>
+                        <strong>{{ u.nombre_completo }}</strong>
+                    </p>
+                    <div class="mb-3">
+                        <label class="form-label">Nueva contraseña <span class="text-danger">*</span></label>
+                        <input class="form-control" type="password" name="nueva_password"
+                               minlength="6" required placeholder="Mínimo 6 caracteres">
+                    </div>
+                    <div class="mb-1">
+                        <label class="form-label">Confirmar contraseña <span class="text-danger">*</span></label>
+                        <input class="form-control" type="password" name="confirmar_password"
+                               minlength="6" required placeholder="Repite la contraseña">
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-warning" type="submit">
+                        <i class="bi bi-key me-1"></i> Restablecer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{# ══ MODALES DE EDICIÓN — fuera de la tabla ══ #}
+{% for u in usuarios %}
+<div class="modal fade" id="editUser{{ u.id }}" tabindex="-1"
+     aria-labelledby="editUserLabel{{ u.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content modal-content-rounded">
+            <form method="post" novalidate>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() if csrf_token is defined else '' }}">
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+
+                <div class="modal-header modal-header-gradient">
+                    <h5 class="modal-title" id="editUserLabel{{ u.id }}">
+                        <i class="bi bi-pencil-square me-2"></i>
+                        Editar — {{ u.nombre_completo }}
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white"
+                            data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Rol</label>
+                            <select class="form-select" name="rol">
+                                {% for rol in roles %}
+                                <option value="{{ rol.nombre }}"
+                                    {% if u.rol.nombre == rol.nombre %}selected{% endif %}>
+                                    {{ rol.nombre }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" name="estado">
+                                <option value="ACTIVO"   {% if u.estado == 'ACTIVO'   %}selected{% endif %}>ACTIVO</option>
+                                <option value="INACTIVO" {% if u.estado == 'INACTIVO' %}selected{% endif %}>INACTIVO</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cédula</label>
+                            <input class="form-control" name="cedula" value="{{ u.cedula or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nombres</label>
+                            <input class="form-control" name="nombres" value="{{ u.nombres or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Apellidos</label>
+                            <input class="form-control" name="apellidos" value="{{ u.apellidos or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Teléfono</label>
+                            <input class="form-control" name="telefono" value="{{ u.telefono or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Email</label>
+                            <input class="form-control" name="email" type="email" value="{{ u.email or '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Usuario</label>
+                            <input class="form-control" name="username" value="{{ u.username }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nueva contraseña</label>
+                            <input class="form-control" name="password"
+                                   placeholder="Dejar vacío para no cambiar">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pregunta de seguridad</label>
+                            <select class="form-select" name="pregunta_seguridad">
+                                <option value="">— Sin pregunta —</option>
+                                {% for p in preguntas %}
+                                <option value="{{ p }}"
+                                    {% if u.pregunta_seguridad == p %}selected{% endif %}>
+                                    {{ p }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Nueva respuesta secreta</label>
+                            <input class="form-control" name="respuesta_seguridad"
+                                   placeholder="Dejar vacío para no cambiar">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Dirección</label>
+                            <input class="form-control" name="direccion"
+                                   value="{{ u.socio.viviendas[0].direccion if u.socio and u.socio.viviendas else (u.direccion_referencia or '') }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Código socio</label>
+                            <input class="form-control" name="codigo_socio"
+                                   value="{{ u.socio.codigo_socio if u.socio else '' }}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">N° medidor</label>
+                            <input class="form-control" name="numero_medidor"
+                                   value="{{ u.socio.medidores[0].numero_medidor if u.socio and u.socio.medidores else '' }}">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary"
+                            data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-primary" type="submit">
+                        <i class="bi bi-check-lg me-1"></i> Guardar cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{# ══ MODAL AVISO DE PRIVACIDAD LOPDP ══ #}
+<div class="modal fade" id="modalLopdp" tabindex="-1"
+     aria-labelledby="modalLopdpLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+        <div class="modal-content modal-content-rounded">
+
+            <div class="modal-header modal-header-gradient">
+                <h5 class="modal-title" id="modalLopdpLabel">
+                    <i class="bi bi-shield-lock me-2"></i>
+                    Aviso de Privacidad y Protección de Datos Personales
+                </h5>
+                <button type="button" class="btn-close btn-close-white"
+                        data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+
+            <div class="modal-body p-4">
+
+                <p class="text-muted" style="font-size:.8rem;">
+                    En cumplimiento de la <strong>Ley Orgánica de Protección de Datos Personales del Ecuador
+                    (LOPDP, R.O. 459 — 26 mayo 2021)</strong> y su Reglamento General de aplicación,
+                    se pone a disposición del titular el siguiente aviso de privacidad.
+                </p>
+
+                <hr>
+
+                {# 1. Responsable #}
+                <h6 class="fw-bold text-primary mb-1">
+                    <i class="bi bi-building me-1"></i> 1. Responsable del Tratamiento
+                </h6>
+                <p style="font-size:.875rem;">
+                    <strong>Junta de Agua Potable HidroGestión</strong><br>
+                    Sistema Comunitario de Agua Potable<br>
+                    <em>Contacto del Responsable:</em> administrador del sistema o directiva de la Junta.
+                </p>
+
+                <hr>
+
+                {# 2. Datos tratados #}
+                <h6 class="fw-bold text-primary mb-1">
+                    <i class="bi bi-database me-1"></i> 2. Datos Personales Tratados
+                </h6>
+                <p style="font-size:.875rem;">Se recopilan y procesan los siguientes datos:</p>
+                <ul style="font-size:.875rem;">
+                    <li>Datos de identificación: nombres y apellidos, número de cédula de identidad.</li>
+                    <li>Datos de contacto: dirección domiciliaria, número de teléfono, correo electrónico.</li>
+                    <li>Datos de acceso: nombre de usuario, contraseña (almacenada de forma cifrada).</li>
+                    <li>Datos del servicio: código de socio, número de medidor, coordenadas GPS de la vivienda.</li>
+                    <li>Datos de consumo: lecturas mensuales, planillas de pago, historial de pagos.</li>
+                    <li>Datos de seguridad: pregunta y respuesta de seguridad (almacenada cifrada).</li>
+                    <li>Metadatos de sesión: dirección IP, agente de usuario, fecha y hora de acceso.</li>
+                </ul>
+
+                <hr>
+
+                {# 3. Finalidades #}
+                <h6 class="fw-bold text-primary mb-1">
+                    <i class="bi bi-list-check me-1"></i> 3. Finalidades del Tratamiento
+                </h6>
+                <p style="font-size:.875rem;">Los datos son tratados exclusivamente para:</p>
+                <ul style="font-size:.875rem;">
+                    <li>Administración y gestión del servicio de agua potable comunitario.</li>
+                    <li>Registro de lecturas de medidores y emisión de planillas de consumo.</li>
+                    <li>Gestión de pagos y estados de cuenta de los socios.</li>
+                    <li>Notificaciones operativas sobre el servicio (cortes, mantenimiento, incidencias).</li>
+                    <li>Control de acceso e identificación de usuarios autorizados del sistema.</li>
+                    <li>Auditoría y trazabilidad de operaciones para garantizar la transparencia.</li>
+                    <li>Recuperación segura de credenciales de acceso.</li>
+                </ul>
+
+                <hr>
+
+                {# 4. Base legal #}
+                <h6 class="fw-bold text-primary mb-1">
+                    <i class="bi bi-file-earmark-text me-1"></i> 4. Base Legal del Tratamiento
+                </h6>
+                <p style="font-size:.875rem;">
+                    El tratamiento se realiza sobre la base del
+                    <strong>consentimiento libre, específico, informado e inequívoco</strong>
+                    del titular (Art. 7 y 8, LOPDP), así como por el cumplimiento de obligaciones
+                    propias del servicio de agua potable comunitario reconocido por el Estado ecuatoriano.
+                </p>
+
+                <hr>
+
+                {# 5. Conservación #}
+                <h6 class="fw-bold text-primary mb-1">
+                    <i class="bi bi-clock-history me-1"></i> 5. Plazo de Conservación
+                </h6>
+                <p style="font-size:.875rem;">
+                    Los datos se conservarán durante el tiempo que el titular mantenga su calidad de
+                    socio activo del sistema de agua potable y, posteriormente, por el período mínimo
+                    exigido por la normativa contable y tributaria ecuatoriana vigente
+                    (generalmente 7 años), salvo obligación legal de conservación por mayor tiempo.
+                </p>
+
+                <hr>
+
+                {# 6. Derechos ARCO #}
+                <h6 class="fw-bold text-primary mb-2">
+                    <i class="bi bi-person-check me-1"></i> 6. Derechos del Titular (Derechos ARCO+P)
+                </h6>
+                <p style="font-size:.875rem;">
+                    De conformidad con los Arts. 19 al 23 de la LOPDP, el titular tiene derecho a:
+                </p>
+
+                <div class="row g-2 mb-2">
+                    <div class="col-md-6">
+                        <div class="p-3 rounded border" style="background:#f0f9ff;border-color:#bae6fd !important;">
+                            <div class="fw-bold" style="font-size:.82rem;color:#0369a1;">
+                                <i class="bi bi-eye me-1"></i> Acceso (Art. 19)
+                            </div>
+                            <p class="mb-0" style="font-size:.8rem;color:#374151;">
+                                Conocer qué datos personales suyos son tratados, para qué finalidad
+                                y de qué origen provienen.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded border" style="background:#f0fdf4;border-color:#bbf7d0 !important;">
+                            <div class="fw-bold" style="font-size:.82rem;color:#166534;">
+                                <i class="bi bi-pencil me-1"></i> Rectificación (Art. 20)
+                            </div>
+                            <p class="mb-0" style="font-size:.8rem;color:#374151;">
+                                Solicitar la corrección de datos personales inexactos, incompletos
+                                o desactualizados.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded border" style="background:#fff7ed;border-color:#fed7aa !important;">
+                            <div class="fw-bold" style="font-size:.82rem;color:#9a3412;">
+                                <i class="bi bi-trash me-1"></i> Cancelación / Eliminación (Art. 21)
+                            </div>
+                            <p class="mb-0" style="font-size:.8rem;color:#374151;">
+                                Solicitar la supresión de sus datos cuando ya no sean necesarios
+                                para la finalidad para la que fueron recogidos o cuando retire el
+                                consentimiento.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded border" style="background:#fdf4ff;border-color:#e9d5ff !important;">
+                            <div class="fw-bold" style="font-size:.82rem;color:#6b21a8;">
+                                <i class="bi bi-x-circle me-1"></i> Oposición (Art. 22)
+                            </div>
+                            <p class="mb-0" style="font-size:.8rem;color:#374151;">
+                                Oponerse al tratamiento de sus datos en los casos en que la base
+                                legal sea el interés legítimo o el consentimiento, con razones
+                                relacionadas con su situación particular.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded border" style="background:#f0f9ff;border-color:#bae6fd !important;">
+                            <div class="fw-bold" style="font-size:.82rem;color:#0369a1;">
+                                <i class="bi bi-download me-1"></i> Portabilidad (Art. 23)
+                            </div>
+                            <p class="mb-0" style="font-size:.8rem;color:#374151;">
+                                Recibir sus datos personales en un formato estructurado, de uso
+                                común y lectura mecánica, y transmitirlos a otro responsable.
+                            </p>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="p-3 rounded border" style="background:#fff1f2;border-color:#fecdd3 !important;">
+                            <div class="fw-bold" style="font-size:.82rem;color:#9f1239;">
+                                <i class="bi bi-shield-x me-1"></i> Revocación del Consentimiento
+                            </div>
+                            <p class="mb-0" style="font-size:.8rem;color:#374151;">
+                                Retirar el consentimiento otorgado en cualquier momento, sin que
+                                ello afecte la licitud del tratamiento previo a la retirada.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <hr>
+
+                {# 7. Ejercicio de derechos #}
+                <h6 class="fw-bold text-primary mb-1">
+                    <i class="bi bi-envelope me-1"></i> 7. Cómo Ejercer sus Derechos
+                </h6>
+                <p style="font-size:.875rem;">
+                    Para ejercer cualquiera de los derechos anteriores, el titular podrá dirigir
+                    una solicitud al Responsable del Tratamiento a través de los canales oficiales
+                    de la Junta de Agua Potable, identificándose debidamente. La solicitud será
+                    atendida en los plazos establecidos en la LOPDP.
+                </p>
+                <p style="font-size:.875rem;">
+                    Adicionalmente, si considera que el tratamiento de sus datos vulnera la LOPDP,
+                    puede presentar una reclamación ante la
+                    <strong>Autoridad de Protección de Datos Personales del Ecuador</strong>
+                    (Art. 69 y ss., LOPDP).
+                </p>
+
+                <div class="alert alert-warning d-flex align-items-start gap-2 mb-0 mt-3"
+                     role="alert" style="font-size:.8rem;">
+                    <i class="bi bi-exclamation-triangle-fill flex-shrink-0 mt-1"></i>
+                    <div>
+                        <strong>Nota para el administrador:</strong> Al marcar el consentimiento
+                        en nombre del titular, el administrador certifica que la persona ha sido
+                        debidamente informada y ha expresado su consentimiento de forma libre e
+                        inequívoca antes de ser registrada en el sistema (Art. 7, LOPDP).
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="modal-footer">
+                <span class="text-muted me-auto" style="font-size:.75rem;">
+                    LOPDP — R.O. 459, 26 mayo 2021
+                </span>
+                <button type="button" class="btn btn-primary"
+                        data-bs-dismiss="modal">
+                    <i class="bi bi-check-lg me-1"></i> Entendido
+                </button>
+            </div>
+
         </div>
     </div>
 </div>

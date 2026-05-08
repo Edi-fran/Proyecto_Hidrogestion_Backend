@@ -360,6 +360,134 @@ body.app-body {
   border: 1px solid var(--border);
 }
 
+/* ══════════════════════════════════════════════
+   USUARIOS — componentes específicos
+   ══════════════════════════════════════════════ */
+
+/* Metric cards con acento de color por variante */
+.metric-card--primary { border-left: 4px solid var(--primary); }
+.metric-card--success  { border-left: 4px solid var(--success); }
+.metric-card--warning  { border-left: 4px solid var(--warning); }
+.metric-card--danger   { border-left: 4px solid var(--danger);  }
+
+.metric-card__value--success { color: var(--success); }
+.metric-card__value--warning { color: var(--warning); }
+.metric-card__value--danger  { color: var(--danger);  }
+
+/* Icono de título en panel */
+.panel-icon { color: var(--primary); }
+
+/* Estado vacío — icono grande */
+.empty-state__icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 8px;
+  color: #cbd5e1;
+}
+
+/* Modal con borde redondeado y sin borde */
+.modal-content-rounded {
+  border-radius: 16px;
+  border: none;
+}
+
+/* Avatar circular en tabla */
+.u-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #1d4ed8, #3b82f6);
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-weight: 700;
+  font-size: .85rem;
+  flex-shrink: 0;
+}
+
+/* Celda nombre + subtítulo */
+.u-info { display: flex; align-items: center; gap: 10px; }
+.u-info__name { font-weight: 600; font-size: .88rem; color: #0f172a; }
+.u-info__sub  { font-size: .75rem; color: var(--muted); }
+
+/* Badges de rol */
+.badge-rol {
+  padding: 3px 10px;
+  border-radius: 8px;
+  font-size: .75rem;
+  font-weight: 700;
+  display: inline-block;
+}
+.badge-rol--admin   { background: #e0ecff; color: #1d4ed8; }
+.badge-rol--tecnico { background: #fff3cd; color: #856404; }
+.badge-rol--socio   { background: #f1f5f9; color: #475569; }
+
+/* Badges de estado */
+.badge-estado {
+  padding: 3px 12px;
+  border-radius: 999px;
+  font-size: .75rem;
+  font-weight: 700;
+  display: inline-block;
+}
+.badge-estado--activo   { background: #d1e7dd; color: #0f5132; border: 1px solid #198754; }
+.badge-estado--inactivo { background: #fee2e2; color: var(--danger); border: 1px solid var(--danger); }
+
+/* Código de medidor */
+.badge-medidor {
+  font-family: 'Courier New', monospace;
+  font-size: .82rem;
+  background: #f1f5f9;
+  padding: 3px 8px;
+  border-radius: 6px;
+  color: #334155;
+}
+
+/* Dirección truncada */
+.cell-address {
+  font-size: .82rem;
+  color: #334155;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+/* Fila de usuario inactivo */
+.row-inactive { opacity: .55; }
+
+/* Botones de acción pequeños en tabla */
+.btn-accion {
+  border-radius: 8px;
+  font-size: .78rem;
+  padding: 4px 10px;
+}
+
+/* Sección de agrupación dentro del formulario */
+.form-section {
+  background: #f8fafc;
+  border-radius: 12px;
+  padding: 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+}
+.form-section__label {
+  font-size: .72rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: 10px;
+}
+
+/* Cabecera de modal con gradiente */
+.modal-header-gradient {
+  background: linear-gradient(135deg, var(--primary), #3b82f6);
+  color: #fff;
+  border-radius: 16px 16px 0 0;
+  border-bottom: none;
+}
+
 /* ── PRINT ── */
 .print-wrap { max-width: 980px; margin: 0 auto; background: #fff; padding: 30px; }
 

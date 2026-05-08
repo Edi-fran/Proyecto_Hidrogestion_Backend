@@ -1,12 +1,16 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from app.extensions import db
 
 
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 class TimestampMixin:
-    creado_en = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
-    actualizado_en = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    creado_en = db.Column(db.DateTime, default=_utcnow, nullable=False)
+    actualizado_en = db.Column(db.DateTime, onupdate=_utcnow)
 
 
 class Rol(TimestampMixin, db.Model):
@@ -57,6 +61,10 @@ class Usuario(TimestampMixin, db.Model):
     direccion_referencia = db.Column(db.String(255))
     estado = db.Column(db.String(20), default='ACTIVO', nullable=False)
     ultimo_login = db.Column(db.DateTime)
+    pregunta_seguridad = db.Column(db.String(255))
+    respuesta_seguridad_hash = db.Column(db.String(255))
+    consentimiento_datos = db.Column(db.Boolean, default=False, nullable=False)
+    fecha_consentimiento = db.Column(db.DateTime)
     rol = db.relationship('Rol', backref='usuarios')
 
     @property

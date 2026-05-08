@@ -4,9 +4,40 @@ from flask_jwt_extended import jwt_required, get_jwt_identity
 from app.extensions import db
 from app.models import Lectura, Medidor, Notificacion, Socio, Usuario
 from app.utils import now_date_str, now_time_str, to_float, to_int
+import requests as req
 
 iot_bp = Blueprint('iot', __name__)
 
+ESP32_IP = '192.168.18.51'
+
+
+# ── Proxy para la App Móvil ────────────────────────────────────
+
+@iot_bp.get('/esp32/datos')
+def proxy_datos():
+    """Proxy directo al ESP32 — usado por la App Móvil React Native."""
+    try:
+        r = req.get(f'http://{ESP32_IP}/datos', timeout=4)
+        return jsonify(r.json()), 200
+    except Exception as e:
+        return jsonify({
+            'error'   : 'ESP32 no disponible',
+            'detalle' : str(e),
+            'esp32_ip': ESP32_IP,
+        }), 503
+
+
+@iot_bp.post('/esp32/reset')
+def proxy_reset():
+    """Resetea contadores del ESP32 — usado por la App Móvil."""
+    try:
+        r = req.post(f'http://{ESP32_IP}/reset', timeout=4)
+        return jsonify(r.json()), 200
+    except Exception as e:
+        return jsonify({'error': 'ESP32 no disponible', 'detalle': str(e)}), 503
+
+
+# ── Endpoints existentes ───────────────────────────────────────
 
 @iot_bp.post('/lectura')
 def recibir_lectura_iot():
@@ -103,8 +134,7 @@ def estadisticas_iot(medidor_id):
 @iot_bp.get('/tiempo-real/<int:medidor_id>')
 def tiempo_real(medidor_id):
     try:
-        import requests
-        r = requests.get('http://192.168.18.51/datos', timeout=3)
+        r = req.get(f'http://{ESP32_IP}/datos', timeout=3)
         return jsonify(r.json())
     except Exception as e:
         return jsonify({'error': str(e), 'mensaje': 'ESP32 no disponible'}), 503
@@ -124,7 +154,7 @@ def mi_medidor():
         'numero_medidor': medidor.numero_medidor,
         'vivienda_id'   : medidor.vivienda_id,
         'socio_id'      : user.socio.id,
-        'esp32_ip'      : '192.168.18.51',
+        'esp32_ip'      : ESP32_IP,
     })
 
 

@@ -1,0 +1,203 @@
+{% extends 'dashboard/base.html' %}
+{% block public_content %}
+
+<style>
+.recover-page {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, #0f2d5c 0%, #1a5fa8 100%);
+    padding: 24px;
+}
+
+.recover-card {
+    width: 100%;
+    max-width: 460px;
+    background: #fff;
+    border-radius: 24px;
+    box-shadow: 0 24px 60px rgba(15,23,42,.2);
+    overflow: hidden;
+}
+
+.recover-header {
+    background: linear-gradient(135deg, #1a5fa8, #3b82f6);
+    padding: 28px 32px;
+    color: #fff;
+    text-align: center;
+}
+
+.recover-header__icon {
+    width: 56px;
+    height: 56px;
+    border-radius: 16px;
+    background: rgba(255,255,255,.2);
+    display: grid;
+    place-items: center;
+    font-size: 24px;
+    margin: 0 auto 12px;
+}
+
+.recover-header__title {
+    font-size: 1.25rem;
+    font-weight: 800;
+    margin: 0 0 4px;
+}
+
+.recover-header__sub {
+    font-size: .85rem;
+    opacity: .85;
+    margin: 0;
+}
+
+.recover-body { padding: 32px; }
+
+.step-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.step-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #e2e8f0;
+    transition: background .2s;
+}
+
+.step-dot.active  { background: var(--primary); }
+.step-dot.done    { background: var(--success); }
+
+.recover-footer {
+    padding: 16px 32px;
+    border-top: 1px solid #e2e8f0;
+    text-align: center;
+    font-size: .82rem;
+    color: #64748b;
+}
+</style>
+
+<div class="recover-page">
+    <div class="recover-card">
+
+        {# ── Flash messages ── #}
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="px-4 pt-3">
+              {% for category, message in messages %}
+                <div class="alert alert-{{ category }} alert-dismissible fade show mb-2" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {# ── Header ── #}
+        <div class="recover-header">
+            <div class="recover-header__icon">
+                {% if paso == '1' %}<i class="bi bi-person-lock"></i>
+                {% elif paso == '2' %}<i class="bi bi-shield-check"></i>
+                {% else %}<i class="bi bi-key"></i>{% endif %}
+            </div>
+            <p class="recover-header__title">Recuperar contraseña</p>
+            <p class="recover-header__sub">
+                {% if paso == '1' %}Paso 1 — Identificar tu cuenta
+                {% elif paso == '2' %}Paso 2 — Pregunta de seguridad
+                {% else %}Paso 3 — Nueva contraseña{% endif %}
+            </p>
+        </div>
+
+        <div class="recover-body">
+
+            {# ── Indicador de pasos ── #}
+            <div class="step-indicator">
+                <div class="step-dot {{ 'done' if paso in ('2','3') else 'active' }}"></div>
+                <div class="step-dot {{ 'done' if paso == '3' else ('active' if paso == '2' else '') }}"></div>
+                <div class="step-dot {{ 'active' if paso == '3' else '' }}"></div>
+            </div>
+
+            {# ══ PASO 1 — Usuario ══ #}
+            {% if paso == '1' %}
+            <form method="post" action="{{ url_for('auth.recuperar_password', paso=1) }}" novalidate>
+                <p class="text-muted mb-4" style="font-size:.88rem;">
+                    Ingresa tu nombre de usuario o email para continuar.
+                </p>
+                <div class="mb-4">
+                    <label class="form-label">Usuario o Email</label>
+                    <input class="form-control" type="text" name="username"
+                           placeholder="Tu usuario o email" required autofocus>
+                </div>
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-arrow-right me-1"></i> Continuar
+                </button>
+            </form>
+
+            {# ══ PASO 2 — Pregunta de seguridad ══ #}
+            {% elif paso == '2' and user %}
+            <form method="post" action="{{ url_for('auth.recuperar_password', paso=2) }}" novalidate>
+                <div class="mb-3 p-3" style="background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0;">
+                    <div style="font-size:.75rem;font-weight:700;color:#64748b;text-transform:uppercase;margin-bottom:4px;">
+                        Usuario identificado
+                    </div>
+                    <div style="font-weight:600;color:#0f172a;">{{ user.nombre_completo }}</div>
+                    <div style="font-size:.82rem;color:#94a3b8;">{{ user.username }}</div>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Pregunta de seguridad</label>
+                    <div class="p-3 mb-3" style="background:#eff6ff;border-radius:10px;border:1px solid #bfdbfe;font-size:.9rem;color:#1d4ed8;font-weight:600;">
+                        <i class="bi bi-question-circle me-2"></i>{{ user.pregunta_seguridad }}
+                    </div>
+                    <label class="form-label">Tu respuesta</label>
+                    <input class="form-control" type="text" name="respuesta"
+                           placeholder="Respuesta exacta" required autofocus>
+                    <div class="form-text">La respuesta no distingue mayúsculas/minúsculas.</div>
+                </div>
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-shield-check me-1"></i> Verificar respuesta
+                </button>
+            </form>
+
+            {# ══ PASO 3 — Nueva contraseña ══ #}
+            {% elif paso == '3' and user %}
+            <form method="post" action="{{ url_for('auth.recuperar_password', paso=3) }}" novalidate>
+                <p class="text-muted mb-4" style="font-size:.88rem;">
+                    Identidad verificada. Crea una nueva contraseña para
+                    <strong>{{ user.nombre_completo }}</strong>.
+                </p>
+                <div class="mb-3">
+                    <label class="form-label">Nueva contraseña <span class="text-danger">*</span></label>
+                    <input class="form-control" type="password" name="nueva_password"
+                           minlength="6" required placeholder="Mínimo 6 caracteres" autofocus>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label">Confirmar contraseña <span class="text-danger">*</span></label>
+                    <input class="form-control" type="password" name="confirmar_password"
+                           minlength="6" required placeholder="Repite la contraseña">
+                </div>
+                <button class="btn btn-primary w-100" type="submit">
+                    <i class="bi bi-check-lg me-1"></i> Guardar nueva contraseña
+                </button>
+            </form>
+
+            {% else %}
+            <div class="text-center text-muted py-3">
+                <p>Sesión expirada. <a href="{{ url_for('auth.recuperar_password', paso=1) }}">Reiniciar</a></p>
+            </div>
+            {% endif %}
+
+        </div>
+
+        <div class="recover-footer">
+            <a href="{{ url_for('dashboard.login_page') }}" class="text-decoration-none">
+                <i class="bi bi-arrow-left me-1"></i> Volver al inicio de sesión
+            </a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

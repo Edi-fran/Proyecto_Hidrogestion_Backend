@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 from pathlib import Path
-from flask import Flask, jsonify, redirect, send_from_directory, url_for
+from flask import Flask, abort, jsonify, redirect, send_from_directory, url_for
 from werkzeug.security import generate_password_hash
 
 from app.config import Config
@@ -21,12 +21,22 @@ def create_app() -> Flask:
 
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
     Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)
-    for sub in ['usuarios', 'lecturas', 'incidencias', 'seguimientos', 'aportes', 'planillas', 'reportes']:
+    for sub in ['usuarios', 'perfiles', 'lecturas', 'incidencias', 'seguimientos', 'aportes', 'planillas', 'reportes']:
         Path(app.config['UPLOAD_FOLDER'], sub).mkdir(parents=True, exist_ok=True)
 
     db.init_app(app)
     jwt.init_app(app)
-    cors.init_app(app, resources={r"/api/*": {"origins": app.config['CORS_ORIGINS']}}, supports_credentials=False)
+
+    # CORS: cuando CORS_ORIGINS es '*', permite todos los orígenes
+    # (necesario para app móvil React Native desde cualquier red)
+    _origins = app.config['CORS_ORIGINS']
+    cors.init_app(
+        app,
+        resources={r"/api/*": {"origins": _origins}},
+        supports_credentials=False,
+        allow_headers=['Content-Type', 'Authorization'],
+        methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    )
 
     from app.routes.auth import auth_bp
     from app.routes.users import users_bp
@@ -39,7 +49,6 @@ def create_app() -> Flask:
     from app.routes.planillas import planillas_bp
     from app.routes.ordenes import ordenes_bp
     from app.routes.comunicaciones import comunicaciones_bp
-    from app.routes.iot import iot_bp
 
     app.register_blueprint(auth_bp, url_prefix='/api/auth')
     app.register_blueprint(users_bp, url_prefix='/api')
@@ -51,7 +60,6 @@ def create_app() -> Flask:
     app.register_blueprint(planillas_bp, url_prefix='/api/planillas')
     app.register_blueprint(ordenes_bp, url_prefix='/api/ordenes')
     app.register_blueprint(comunicaciones_bp, url_prefix='/api')
-    app.register_blueprint(iot_bp, url_prefix='/api/iot')
     app.register_blueprint(dashboard_bp)
 
     @app.route('/api/health')
@@ -64,6 +72,8 @@ def create_app() -> Flask:
 
     @app.route('/uploads/<path:filename>')
     def uploads(filename):
+        if '..' in filename or filename.startswith('/'):
+            abort(404)
         return send_from_directory(app.config['UPLOAD_FOLDER'], filename)
 
     @jwt.token_in_blocklist_loader

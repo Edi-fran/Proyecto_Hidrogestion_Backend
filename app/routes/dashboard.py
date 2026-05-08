@@ -1,40 +1,34 @@
 from __future__ import annotations
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for, jsonify, send_from_directory
-from werkzeug.security import generate_password_hash
 import os
+import re
+from datetime import datetime
+
+from flask import (
+    Blueprint, abort, current_app, flash, jsonify,
+    redirect, render_template, request, send_from_directory, session, url_for,
+)
+from sqlalchemy import or_
+from werkzeug.security import generate_password_hash
+from werkzeug.utils import secure_filename
 
 from app.extensions import db
-from app.models import Aviso, Incidencia, Lectura, Medidor, Mensaje, MovimientoCaja, Notificacion, OrdenTrabajo, Pago, Planilla, Recordatorio, Reunion, Rol, Sector, Sesion, Socio, Tarifa, TarifaAsignada, Usuario, Vivienda
+from app.models import (
+    Aviso, Incidencia, Lectura, LecturaEvidencia, Medidor, Mensaje,
+    MovimientoCaja, Notificacion, OrdenTrabajo, Pago, Planilla,
+    Recordatorio, Reunion, Rol, Sector, Sesion, Socio, Tarifa,
+    TarifaAsignada, Usuario, Vivienda,
+)
 from app.utils import now_date_str, now_time_str, sync_system_alerts, to_float, to_int
-from sqlalchemy import or_
-from werkzeug.utils import secure_filename
-from datetime import datetime
-from app.models import LecturaEvidencia
+from app.routes.auth import PREGUNTAS_SEGURIDAD
 
-from datetime import datetime
-from werkzeug.utils import secure_filename
-from app.models import Usuario, Socio, Medidor, Lectura, LecturaEvidencia, Planilla
-
-from datetime import datetime
-from werkzeug.utils import secure_filename
-from app.models import Usuario, Socio, Medidor, Lectura, LecturaEvidencia, Planilla
-dashboard_bp = Blueprint('dashboard', __name__, url_prefix='/dashboard', template_folder='../templates', static_folder='../static', static_url_path='/dashboard-static')
-
-
-import os
-from datetime import datetime
-from flask import request, render_template, redirect, url_for, flash, abort
-from werkzeug.utils import secure_filename
-
-# Busca tu import actual, probablemente se ve así:
-from flask import Blueprint, request, jsonify
-
-# Agrégale current_app:
-from flask import Blueprint, request, jsonify, current_app
-
-
-
+dashboard_bp = Blueprint(
+    'dashboard', __name__,
+    url_prefix='/dashboard',
+    template_folder='../templates',
+    static_folder='../static',
+    static_url_path='/dashboard-static',
+)
 
 def dashboard_required(view_func):
     from functools import wraps
@@ -90,9 +84,33 @@ def usuarios_view():
         action = request.form.get('action', 'create')
         if action == 'delete':
             user = Usuario.query.get_or_404(to_int(request.form.get('user_id')))
-            user.estado = 'INACTIVO'
-            db.session.commit()
-            flash('Usuario desactivado correctamente.', 'success')
+            try:
+                user.estado = 'INACTIVO'
+                db.session.commit()
+                flash('Usuario desactivado correctamente.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error desactivando usuario {user.id}: {e}")
+                flash('Error al desactivar el usuario.', 'danger')
+            return redirect(url_for('dashboard.usuarios_view'))
+        if action == 'reset_password':
+            user = Usuario.query.get_or_404(to_int(request.form.get('user_id')))
+            nueva = request.form.get('nueva_password', '').strip()
+            confirmar = request.form.get('confirmar_password', '').strip()
+            if not nueva or len(nueva) < 6:
+                flash('La contraseña debe tener al menos 6 caracteres.', 'danger')
+                return redirect(url_for('dashboard.usuarios_view'))
+            if nueva != confirmar:
+                flash('Las contraseñas no coinciden.', 'danger')
+                return redirect(url_for('dashboard.usuarios_view'))
+            try:
+                user.password_hash = generate_password_hash(nueva)
+                db.session.commit()
+                flash(f'Contraseña de {user.nombre_completo} restablecida correctamente.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error restableciendo contraseña usuario {user.id}: {e}")
+                flash('Error al restablecer la contraseña.', 'danger')
             return redirect(url_for('dashboard.usuarios_view'))
         if action == 'update':
             user = Usuario.query.get_or_404(to_int(request.form.get('user_id')))
@@ -122,11 +140,44 @@ def usuarios_view():
                     medidor.numero_medidor = request.form.get('numero_medidor') or medidor.numero_medidor
                     medidor.marca = request.form.get('marca_medidor') or medidor.marca
                     medidor.modelo = request.form.get('modelo_medidor') or medidor.modelo
-            db.session.commit()
-            flash('Usuario actualizado correctamente.', 'success')
+            if request.form.get('pregunta_seguridad'):
+                user.pregunta_seguridad = request.form.get('pregunta_seguridad')
+            if request.form.get('respuesta_seguridad'):
+                user.respuesta_seguridad_hash = generate_password_hash(
+                    request.form.get('respuesta_seguridad').strip().lower()
+                )
+            try:
+                db.session.commit()
+                flash('Usuario actualizado correctamente.', 'success')
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Error actualizando usuario {user.id}: {e}")
+                flash('Error al actualizar el usuario.', 'danger')
+            return redirect(url_for('dashboard.usuarios_view'))
+        if not request.form.get('consentimiento_datos'):
+            flash('El usuario debe aceptar el consentimiento de datos para ser registrado.', 'danger')
+            return redirect(url_for('dashboard.usuarios_view'))
+        if not request.form.get('pregunta_seguridad') or not request.form.get('respuesta_seguridad'):
+            flash('La pregunta y respuesta de seguridad son obligatorias.', 'danger')
             return redirect(url_for('dashboard.usuarios_view'))
         rol = Rol.query.filter_by(nombre=(request.form.get('rol') or 'SOCIO').upper()).first()
-        user = Usuario(rol_id=rol.id, cedula=request.form.get('cedula'), nombres=request.form.get('nombres'), apellidos=request.form.get('apellidos'), telefono=request.form.get('telefono'), email=request.form.get('email'), username=request.form.get('username'), password_hash=generate_password_hash(request.form.get('password') or 'Temporal123*'), direccion_referencia=request.form.get('direccion'), estado='ACTIVO')
+        respuesta_raw = request.form.get('respuesta_seguridad').strip().lower()
+        user = Usuario(
+            rol_id=rol.id,
+            cedula=request.form.get('cedula'),
+            nombres=request.form.get('nombres'),
+            apellidos=request.form.get('apellidos'),
+            telefono=request.form.get('telefono'),
+            email=request.form.get('email'),
+            username=request.form.get('username'),
+            password_hash=generate_password_hash(request.form.get('password') or 'Temporal123*'),
+            direccion_referencia=request.form.get('direccion'),
+            estado='ACTIVO',
+            pregunta_seguridad=request.form.get('pregunta_seguridad'),
+            respuesta_seguridad_hash=generate_password_hash(respuesta_raw),
+            consentimiento_datos=True,
+            fecha_consentimiento=datetime.now(),
+        )
         db.session.add(user)
         db.session.commit()
         if rol.nombre == 'SOCIO':
@@ -141,7 +192,13 @@ def usuarios_view():
         flash('Usuario creado correctamente.', 'success')
         return redirect(url_for('dashboard.usuarios_view'))
     usuarios = Usuario.query.order_by(Usuario.id.desc()).all()
-    return render_template('dashboard/users.html', usuarios=usuarios, roles=Rol.query.all(), sectores=Sector.query.order_by(Sector.nombre).all())
+    return render_template(
+        'dashboard/users.html',
+        usuarios=usuarios,
+        roles=Rol.query.all(),
+        sectores=Sector.query.order_by(Sector.nombre).all(),
+        preguntas=PREGUNTAS_SEGURIDAD,
+    )
 
 
 @dashboard_bp.route('/lecturas', methods=['GET', 'POST'])
@@ -212,11 +269,13 @@ def lecturas_view():
 
         foto = request.files.get('foto_evidencia')
         if foto and foto.filename:
+            EXTENSIONES_PERMITIDAS = {'.jpg', '.jpeg', '.png', '.webp'}
             nombre_seguro = secure_filename(foto.filename)
             extension = os.path.splitext(nombre_seguro)[1].lower()
 
-            if not extension:
-                extension = '.jpg'
+            if extension not in EXTENSIONES_PERMITIDAS:
+                flash('Solo se permiten imágenes JPG, PNG o WEBP.', 'danger')
+                return redirect(url_for('dashboard.lecturas_view'))
 
             carpeta_lecturas = os.path.abspath(
                 os.path.join(os.path.dirname(__file__), '..', '..', 'uploads', 'Lecturas')
@@ -263,7 +322,7 @@ def lecturas_view():
     if fecha:
         consulta = consulta.filter(Lectura.fecha_lectura == fecha)
 
-    if hora:
+    if hora and re.match(r'^\d{2}:\d{2}$', hora):
         consulta = consulta.filter(db.func.substr(Lectura.hora_lectura, 1, 5) == hora)
 
     if dia:
@@ -292,13 +351,6 @@ def lecturas_view():
             )
 
     lecturas = consulta.order_by(Lectura.id.desc()).all()
-
-    print("======================================")
-    print("DB URI:", current_app.config.get("SQLALCHEMY_DATABASE_URI"))
-    print("TOTAL LECTURAS EN VISTA:", len(lecturas))
-    for item in lecturas:
-        print("LECTURA:", item.id, item.fecha_lectura, item.hora_lectura, item.estado)
-    print("======================================")
 
     return render_template(
         'dashboard/lecturas.html',
@@ -754,58 +806,11 @@ def generar_planillas():
             generadas += 1
         except Exception as e:
             errores += 1
-            print(f"Error lectura {lectura.id}: {e}")
+            current_app.logger.error(f"Error generando planilla lectura {lectura.id}: {e}")
     db.session.commit()
     flash(f'Planillas generadas: {generadas}. Errores: {errores}.', 'success')
     return redirect(url_for('dashboard.planillas_view'))
 
-
-@dashboard_bp.get('/iot')
-@dashboard_required
-def iot_view():
-    import requests as req
-    
-    # Datos en tiempo real del ESP32
-    esp32_data = {}
-    esp32_online = False
-    try:
-        r = req.get('http://192.168.18.51/datos', timeout=3)
-        if r.status_code == 200:
-            esp32_data = r.json()
-            esp32_online = True
-    except:
-        esp32_online = False
-
-    # Historial de lecturas IoT del medidor 3
-    from app.models import Lectura
-    lecturas = Lectura.query.filter(
-        Lectura.medidor_id == 3,
-        Lectura.observacion.like('IoT%')
-    ).order_by(Lectura.id.desc()).limit(30).all()
-
-    # Consumo por día
-    consumo_dia = {}
-    for l in lecturas:
-        fecha = l.fecha_lectura or 'Sin fecha'
-        consumo_dia[fecha] = consumo_dia.get(fecha, 0) + (l.consumo_calculado or 0)
-
-    datos_grafica = [
-        {'fecha': k, 'm3': round(v, 5), 'litros': round(v * 1000, 2)}
-        for k, v in sorted(consumo_dia.items())
-    ]
-
-    total_m3     = sum(l.consumo_calculado or 0 for l in lecturas)
-    total_litros = total_m3 * 1000
-
-    return render_template(
-        'dashboard/iot.html',
-        esp32_data   = esp32_data,
-        esp32_online = esp32_online,
-        lecturas     = lecturas,
-        datos_grafica= datos_grafica,
-        total_m3     = round(total_m3, 5),
-        total_litros = round(total_litros, 2),
-    )
 
 
 # ── RUTA PARA SERVIR IMÁGENES SUBIDAS ────────────────────────────────────────
